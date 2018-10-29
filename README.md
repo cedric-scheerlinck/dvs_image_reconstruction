@@ -1,10 +1,11 @@
 # DVS Image Reconstruction 
 Cedric Scheerlinck
 
+This has been developed with ROS version [Kinetic](http://wiki.ros.org/kinetic) (Ubuntu 16.04).
+
 ## Install Instructions
 
-Install [ROS](http://wiki.ros.org/ROS/Installation) and the [event camera drivers](https://github.com/uzh-rpg/rpg_dvs_ros).
-This has been developed with ROS version [Kinetic](http://wiki.ros.org/kinetic) under Ubuntu 16.04.
+First install [ROS](http://wiki.ros.org/ROS/Installation) and the [event camera drivers](https://github.com/uzh-rpg/rpg_dvs_ros).
 
 Clone this repository:
 
