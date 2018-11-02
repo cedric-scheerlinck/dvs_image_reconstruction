@@ -32,7 +32,8 @@ Clone dependencies:
     
 Add udev rule to run live [DVS](https://inivation.com/dvs/) (see [RPG Event Camera Driver](https://github.com/uzh-rpg/rpg_dvs_ros)):
 
-    sudo rpg_dvs_ros/libcaer_catkin/install.sh
+    cd rpg_dvs_ros/libcaer_catkin/
+    sudo ./install.sh
 
 Build the packages:  
 
