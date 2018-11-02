@@ -1,7 +1,10 @@
 # DVS Image Reconstruction 
-Cedric Scheerlinck
+**Cedric Scheerlinck**
 
-This has been developed with ROS version [Kinetic](http://wiki.ros.org/kinetic) (Ubuntu 16.04).
+This package was developed using ROS version [Kinetic](http://wiki.ros.org/kinetic) (Ubuntu 16.04).
+It can be run in real-time using a live [DVS](https://inivation.com/dvs/) with the [RPG Event Camera Driver](https://github.com/uzh-rpg/rpg_dvs_ros), or from pre-recorded rosbag [data](https://drive.google.com/drive/folders/1Jv73p1-Hi56HXyal4SHQbzs2zywISOvc?usp=sharing).
+
+The source code is released under the **MIT License**.
 
 ### Publication
 
