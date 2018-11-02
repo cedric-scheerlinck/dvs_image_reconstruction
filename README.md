@@ -30,9 +30,13 @@ Clone dependencies:
 
     vcs-import < dvs_image_reconstruction/dependencies.yaml
     
+Add udev rule to run [event camera driver](https://github.com/uzh-rpg/rpg_dvs_ros):
+
+    sudo rpg_dvs_ros/libcaer_catkin/install.sh
+    
 Build the packages:  
 
-    catkin build pure_event_reconstruction complementary_filter
+    catkin build davis_ros_driver complementary_filter pure_event_reconstruction
     source ~/catkin_ws/devel/setup.bash
 
 ## Downloads
