@@ -3,6 +3,12 @@ Cedric Scheerlinck
 
 This has been developed with ROS version [Kinetic](http://wiki.ros.org/kinetic) (Ubuntu 16.04).
 
+### Publication
+
+If you use this work in an academic context, please cite the following work
+
+* C. Scheerlinck, N. Barnes, R. Mahony: Continuous-time Intensity Estimation Using Event Cameras. Asian Conference on Computer Vision (ACCV), Perth, 2018. ([PDF](https://cedric-scheerlinck.github.io/files/2018_scheerlinck_continuous-time_intensity_estimation.pdf))
+
 ## Install Instructions
 
 Please replace \<YOUR VERSION\> with your [ROS](http://wiki.ros.org/ROS/Installation) version (e.g. kinetic).
