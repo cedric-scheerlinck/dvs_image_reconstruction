@@ -9,9 +9,9 @@ Please replace \<YOUR VERSION\> with your [ROS](http://wiki.ros.org/ROS/Installa
 
 First install the [RPG Event Camera Driver](https://github.com/uzh-rpg/rpg_dvs_ros).
 
-Install [catkin tools](http://catkin-tools.readthedocs.org/en/latest/installing.html) and [vcstool](https://github.com/dirk-thomas/vcstool)
+Install [libusb](https://libusb.info/), [catkin tools](http://catkin-tools.readthedocs.org/en/latest/installing.html) and [vcstool](https://github.com/dirk-thomas/vcstool)
 
-    sudo apt install python-catkin-tools python-vcstool
+    sudo apt install libusb-1.0-0-dev python-catkin-tools python-vcstool
     
 Install ROS dependencies
 
