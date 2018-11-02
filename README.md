@@ -7,8 +7,6 @@ This has been developed with ROS version [Kinetic](http://wiki.ros.org/kinetic) 
 
 Please replace \<YOUR VERSION\> with your [ROS](http://wiki.ros.org/ROS/Installation) version (e.g. kinetic).
 
-First install the [RPG Event Camera Driver](https://github.com/uzh-rpg/rpg_dvs_ros).
-
 Install [libusb](https://libusb.info/), [catkin tools](http://catkin-tools.readthedocs.org/en/latest/installing.html) and [vcstool](https://github.com/dirk-thomas/vcstool)
 
     sudo apt install libusb-1.0-0-dev python-catkin-tools python-vcstool
@@ -32,6 +30,10 @@ Clone dependencies:
 
     vcs-import < dvs_image_reconstruction/dependencies.yaml
     
+Add udev rule to run live [DVS](https://inivation.com/dvs/) (see [RPG Event Camera Driver](https://github.com/uzh-rpg/rpg_dvs_ros)):
+
+    sudo rpg_dvs_ros/libcaer_catkin/install.sh
+
 Build the packages:  
 
     catkin build davis_ros_driver complementary_filter pure_event_reconstruction
