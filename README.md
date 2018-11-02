@@ -5,11 +5,15 @@ This has been developed with ROS version [Kinetic](http://wiki.ros.org/kinetic) 
 
 ## Install Instructions
 
-First install [ROS](http://wiki.ros.org/ROS/Installation) and the [event camera drivers](https://github.com/uzh-rpg/rpg_dvs_ros).
+Please replace \<YOUR VERSION\> with your [ROS](http://wiki.ros.org/ROS/Installation) version (e.g. kinetic).
 
-Install [vcstool](https://github.com/dirk-thomas/vcstool)
+Install [libusb](https://libusb.info/), [catkin tools](http://catkin-tools.readthedocs.org/en/latest/installing.html) and [vcstool](https://github.com/dirk-thomas/vcstool)
 
-    sudo apt-get install python-vcstool
+    sudo apt install libusb-1.0-0-dev python-catkin-tools python-vcstool
+    
+Install ROS dependencies
+
+    sudo apt install ros-<YOUR VERSION>-camera-info-manager ros-<YOUR VERSION>-image-view
     
 Create a new catkin workspace if needed:
 
