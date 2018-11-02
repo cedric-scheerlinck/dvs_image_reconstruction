@@ -300,7 +300,7 @@ void Complementary_filter::update_xy_contrast_threshold(const uint32_t& row, con
   constexpr double DVS_CHANGE_MIN = 2; // number of events
   constexpr double ON_OFF_RATIO_MIN = 2;
   constexpr double OFF_ON_RATIO_MIN = 2;
-  constexpr double ITERATIONS_TO_REACH_95_PERCENT = 20;
+  constexpr double ITERATIONS_TO_REACH_95_PERCENT = 10;
   // contrast threshold low pass (exponentially weighted moving
   // average; EWMA) parameter BETA = (1 - 0.95)^(1/N), where N is
   // the number of iterations required to reach 95% of a constant signal.
