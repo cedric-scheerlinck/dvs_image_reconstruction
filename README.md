@@ -5,7 +5,7 @@ This has been developed with ROS version [Kinetic](http://wiki.ros.org/kinetic) 
 
 ### Publication
 
-If you use this work in an academic context, please cite the following work
+If you use this work in an academic context, please cite the following work:
 
 * C. Scheerlinck, N. Barnes, R. Mahony: Continuous-time Intensity Estimation Using Event Cameras. Asian Conference on Computer Vision (ACCV), Perth, 2018. ([PDF](https://cedric-scheerlinck.github.io/files/2018_scheerlinck_continuous-time_intensity_estimation.pdf))
 
@@ -13,11 +13,11 @@ If you use this work in an academic context, please cite the following work
 
 Please replace \<YOUR VERSION\> with your [ROS](http://wiki.ros.org/ROS/Installation) version (e.g. kinetic).
 
-Install [libusb](https://libusb.info/), [catkin tools](http://catkin-tools.readthedocs.org/en/latest/installing.html) and [vcstool](https://github.com/dirk-thomas/vcstool)
+Install [libusb](https://libusb.info/), [catkin tools](http://catkin-tools.readthedocs.org/en/latest/installing.html) and [vcstool](https://github.com/dirk-thomas/vcstool):
 
     sudo apt install libusb-1.0-0-dev python-catkin-tools python-vcstool
     
-Install ROS dependencies
+Install ROS dependencies:
 
     sudo apt install ros-<YOUR VERSION>-camera-info-manager ros-<YOUR VERSION>-image-view
     
