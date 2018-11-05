@@ -16,9 +16,9 @@ If you use this work in an academic context, please cite the following work:
 
 Please replace \<YOUR VERSION\> with your [ROS](http://wiki.ros.org/ROS/Installation) version (e.g. kinetic).
 
-Install [libusb](https://libusb.info/), [catkin tools](http://catkin-tools.readthedocs.org/en/latest/installing.html) and [vcstool](https://github.com/dirk-thomas/vcstool):
+Install [libusb](https://libusb.info/), [catkin tools](http://catkin-tools.readthedocs.org/en/latest/installing.html), [vcstool](https://github.com/dirk-thomas/vcstool) and autoreconf:
 
-    sudo apt install libusb-1.0-0-dev python-catkin-tools python-vcstool
+    sudo apt install libusb-1.0-0-dev python-catkin-tools python-vcstool dh-autoreconf
     
 Install ROS dependencies:
 
