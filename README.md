@@ -18,7 +18,7 @@ Please replace \<YOUR VERSION\> with your [ROS](http://wiki.ros.org/ROS/Installa
 
 Install [libusb](https://libusb.info/), [catkin tools](http://catkin-tools.readthedocs.org/en/latest/installing.html), [vcstool](https://github.com/dirk-thomas/vcstool) and autoreconf:
 
-    sudo apt install libusb-1.0-0-dev python-catkin-tools python-vcstool dh-autoreconf 
+    sudo apt install libusb-1.0-0-dev python-catkin-tools python-vcstool dh-autoreconf
     
 Install ROS dependencies:
 
@@ -33,21 +33,21 @@ Create a new catkin workspace if needed:
 Clone this repository:
 
     cd src/
-    git clone https://github.com/cedric-scheerlinck/dvs_image_reconstruction.git 
+    git clone https://github.com/cedric-scheerlinck/dvs_image_reconstruction.git
 
 Clone dependencies:
 
-    vcs-import < dvs_image_reconstruction/dependencies.yaml 
+    vcs-import < dvs_image_reconstruction/dependencies.yaml
     
 Add udev rule to run live [DVS](https://inivation.com/dvs/) (see [RPG Event Camera Driver](https://github.com/uzh-rpg/rpg_dvs_ros)):
 
     cd rpg_dvs_ros/libcaer_catkin/
-    sudo ./install.sh 
+    sudo ./install.sh
 
 Build the packages:  
 
     catkin build davis_ros_driver complementary_filter pure_event_reconstruction
-    source ~/catkin_ws/devel/setup.bash 
+    source ~/catkin_ws/devel/setup.bash
 
 ## Downloads
 Datasets can be found [here](https://drive.google.com/drive/folders/1Jv73p1-Hi56HXyal4SHQbzs2zywISOvc?usp=sharing).
