@@ -32,7 +32,7 @@ Create a new catkin workspace if needed:
 
 Clone this repository:
 
-    cd ~/catkin_ws/src/
+    cd src/
     git clone https://github.com/cedric-scheerlinck/dvs_image_reconstruction.git
 
 Clone dependencies:
