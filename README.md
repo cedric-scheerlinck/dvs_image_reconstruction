@@ -26,8 +26,7 @@ Install ROS dependencies:
     
 Create a new catkin workspace if needed:
 
-    mkdir -p ~/catkin_ws/
-    cd ~/catkin_ws/
+    mkdir -p ~/catkin_ws/src && cd ~/catkin_ws/
     catkin config --init --mkdirs --extend /opt/ros/<YOUR VERSION> --merge-devel --cmake-args -DCMAKE_BUILD_TYPE=Release
 
 Clone this repository:
