@@ -24,4 +24,6 @@ In another terminal launch the complementary filter:
     
     roslaunch complementary_filter from_rosbag.launch
     
-    
+## Reconfigure
+
+![gui_picture](images/reconfigure.png)
