@@ -50,3 +50,10 @@ Build the packages:
 
 ## Downloads
 Datasets can be found [here](https://drive.google.com/drive/folders/1Jv73p1-Hi56HXyal4SHQbzs2zywISOvc?usp=sharing).
+
+## Video
+[![dvs_image_reconstruction_video](images/thumbnail.png)](https://youtu.be/bZ0ZKido0Ag)
+[https://youtu.be/bZ0ZKido0Ag](https://youtu.be/bZ0ZKido0Ag)
+
+
+
