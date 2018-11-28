@@ -7,9 +7,15 @@ This package allows image reconstruction from only events.
 
 ### Live with DAVIS camera:
 
-    roslaunch pure_event_reconstruction davis_mono.launch
+Remember to source your variables from the bash file created when the packages were built.
+    
+    source ~/catkin_ws/devel/setup.bash
  
 to launch DAVIS with APS frames enabled (not used for reconstruction).
+
+    roslaunch pure_event_reconstruction davis_mono.launch
+ 
+
     
 ### From pre-recorded rosbag:
 Download a rosbag from the [DVS Image Reconstruction Dataset](https://drive.google.com/drive/folders/1Jv73p1-Hi56HXyal4SHQbzs2zywISOvc?usp=sharing) or the [RPG Event-Camera Dataset](http://rpg.ifi.uzh.ch/davis_data.html).
