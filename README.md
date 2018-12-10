@@ -8,9 +8,9 @@ The source code is released under the **MIT License**.
 
 ### Publication
 
-If you use this work in an academic context, please cite the following work:
+If you use this work in an academic context, please cite the following work  ([PDF](https://cedric-scheerlinck.github.io/files/2018_scheerlinck_continuous-time_intensity_estimation.pdf), [BibTex](https://cedric-scheerlinck.github.io/files/2018_accv_continuous_bibtex.txt)):
 
-* Cedric Scheerlinck, Nick Barnes, Robert Mahony, "Continuous-time Intensity Estimation Using Event Cameras", Asian Conference on Computer Vision (ACCV), Perth, 2018. ([PDF](https://cedric-scheerlinck.github.io/files/2018_scheerlinck_continuous-time_intensity_estimation.pdf), [BibTex](https://cedric-scheerlinck.github.io/files/2018_accv_continuous_bibtex.txt))
+* Cedric Scheerlinck, Nick Barnes, Robert Mahony, "Continuous-time Intensity Estimation Using Event Cameras," Asian Conference on Computer Vision (ACCV), Perth, 2018.
 
 ## Install Instructions
 
