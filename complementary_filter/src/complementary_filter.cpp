@@ -15,7 +15,7 @@ Complementary_filter::Complementary_filter(ros::NodeHandle & nh, ros::NodeHandle
   const int EVENT_SUB_QUEUE_SIZE = 100;
   const int IMAGE_SUB_QUEUE_SIZE = 10;
   // publisher queue size
-  const int INTENSITY_ESTIMATE_PUB_QUEUE_SIZE = 1;
+  const int INTENSITY_ESTIMATE_PUB_QUEUE_SIZE = 10;
   const int CUTOFF_FREQUENCY_PUB_QUEUE_SIZE = 1;
 
   // read parameters from launch file
@@ -86,9 +86,9 @@ void Complementary_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& 
     {
       update_log_intensity_state_global(ts);
       t_next_update_log_intensity_state_global_ = ts + 1.0 / global_log_intensity_state_update_frequency_;
+      publish_intensity_estimate(msg->events.back().ts);
     }
 
-    publish_intensity_estimate(msg->events.back().ts);
   }
 }
 
