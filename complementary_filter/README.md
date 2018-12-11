@@ -7,6 +7,12 @@ This package allows image reconstruction by combining events with APS intensity 
 
 ### Live with DAVIS camera:
 
+Remember to source your variables from the bash file created when the packages were built.
+    
+    source ~/catkin_ws/devel/setup.bash
+ 
+Launch the complementary_filter package with the below command
+
     roslaunch complementary_filter davis_mono.launch
     
 ### From pre-recorded rosbag:
