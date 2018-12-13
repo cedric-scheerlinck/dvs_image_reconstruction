@@ -5,11 +5,11 @@ This package allows image reconstruction by combining events with APS intensity 
 
 ## Run Instructions
 
-### Live with DAVIS camera:
-
 Remember to source your variables from the bash file created when the packages were built.
     
     source ~/catkin_ws/devel/setup.bash
+
+### Live with DAVIS camera:
  
 Launch the complementary_filter package with the below command
 
