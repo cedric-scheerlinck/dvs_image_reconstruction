@@ -12,10 +12,10 @@ namespace complementary_filter
 Complementary_filter::Complementary_filter(ros::NodeHandle & nh, ros::NodeHandle nh_private)
 {
   // subscriber queue size
-  const int EVENT_SUB_QUEUE_SIZE = 100;
-  const int IMAGE_SUB_QUEUE_SIZE = 10;
+  const int EVENT_SUB_QUEUE_SIZE = 1000;
+  const int IMAGE_SUB_QUEUE_SIZE = 100;
   // publisher queue size
-  const int INTENSITY_ESTIMATE_PUB_QUEUE_SIZE = 10;
+  const int INTENSITY_ESTIMATE_PUB_QUEUE_SIZE = 1;
   const int CUTOFF_FREQUENCY_PUB_QUEUE_SIZE = 1;
 
   // read parameters from launch file
