@@ -33,12 +33,13 @@ class High_pass_filter
 {
 public:
   High_pass_filter(ros::NodeHandle & nh, ros::NodeHandle nh_private);
+  void eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg);
+
   virtual ~High_pass_filter();
 
 private:
   ros::NodeHandle nh_;
 
-  void eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg);
   void reconfigureCallback(pure_event_reconstruction::pure_event_reconstructionConfig &config, uint32_t level);
 
   void initialise_image_states(const uint32_t& rows, const uint32_t& columns);

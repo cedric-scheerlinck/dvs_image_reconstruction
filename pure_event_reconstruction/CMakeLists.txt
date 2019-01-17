@@ -10,7 +10,9 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
 find_package(OpenCV REQUIRED)
 
 # make libraries
-cs_add_library(${PROJECT_NAME} src/pure_event_reconstruction.cpp)
+cs_add_library(${PROJECT_NAME} src/pure_event_reconstruction.cpp
+							   src/bag_player.cpp
+							   src/utils.cpp)
 
 # link required libraries
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES})
