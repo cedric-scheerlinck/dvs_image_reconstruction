@@ -19,6 +19,22 @@ to launch DAVIS with APS frames enabled (not used for reconstruction).
 ### From pre-recorded rosbag:
 Download a rosbag from the [DVS Image Reconstruction Dataset](https://drive.google.com/drive/folders/1Jv73p1-Hi56HXyal4SHQbzs2zywISOvc?usp=sharing) or the [RPG Event-Camera Dataset](http://rpg.ifi.uzh.ch/davis_data.html).
 
+#### NEW: Offline Mode (recommended)
+
+Open a terminal and launch roscore:
+
+    roscore
+    
+In another terminal launch the package:
+    
+    roslaunch pure_event_reconstruction from_rosbag.launch bag_path:=<path/to/input/rosbag.bag> save_dir:=<directory/to/save/images/> publish_framerate:=<framerate>
+    
+where bag_path:=, save_dir:=, and publish_framerate:= are optional command-line arguments.
+To pre-set dynamic reconfigure parameters, first launch the package without specifying bag_path:= and modify (or load) parameters, then (without closing roscore) close and re-launch the package with bag_path:=.
+You can save and load reconfigure parameters to and from .yaml files using reconfigure_gui.
+
+#### Old way
+
 Open a terminal launch roscore:
 
     roscore
