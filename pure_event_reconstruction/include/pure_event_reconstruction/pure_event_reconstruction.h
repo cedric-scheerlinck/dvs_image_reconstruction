@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string>
+#include <stdio.h>
+
 // boost
 #include <boost/thread.hpp>
 #include <boost/thread/thread_time.hpp>
@@ -20,6 +23,7 @@
 #include <image_transport/image_transport.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/opencv.hpp>
 #include <ros/ros.h>
 
 // google logging
@@ -34,7 +38,7 @@ class High_pass_filter
 public:
   High_pass_filter(ros::NodeHandle & nh, ros::NodeHandle nh_private);
   void eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg);
-
+  void set_parameters();
   virtual ~High_pass_filter();
 
 private:
@@ -75,6 +79,9 @@ private:
   bool log_intensity_state_initialised_;
   bool adaptive_contrast_threshold_;
   bool adaptive_dynamic_range_;
+  bool save_images_;
+
+  std::string save_dir_;
 
   int spatial_smoothing_method_;
 
@@ -90,7 +97,6 @@ private:
   double contrast_threshold_off_adaptive_;
 
   // update-frequency parameters
-  double global_log_intensity_state_update_frequency_;
   double publish_framerate_;
   double t_next_publish_;
   double t_next_recalibrate_contrast_thresholds_;
@@ -100,6 +106,7 @@ private:
   double intensity_min_user_defined_;
   double intensity_max_user_defined_;
   double spatial_filter_sigma_;
+
 
 };
 

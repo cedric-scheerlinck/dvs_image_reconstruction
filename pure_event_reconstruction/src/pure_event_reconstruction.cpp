@@ -1,5 +1,5 @@
-#include "../include/pure_event_reconstruction/pure_event_reconstruction.h"
-
+#include "pure_event_reconstruction/pure_event_reconstruction.h"
+#include "pure_event_reconstruction/utils.h"
 #include <std_msgs/Float32.h>
 #include <glog/logging.h>
 
@@ -14,11 +14,30 @@ High_pass_filter::High_pass_filter(ros::NodeHandle & nh, ros::NodeHandle nh_priv
   constexpr int INTENSITY_ESTIMATE_PUB_QUEUE_SIZE = 1;
   constexpr double EVENT_RETENTION_DURATION = 30;  // seconds. Used for calibrating contrast thresholds.
 
-  nh_private.param<double>("publish_framerate", publish_framerate_, 0.0);
-  nh_private.param<double>("global_log_intensity_state_update_frequency", global_log_intensity_state_update_frequency_, 30.0);
+  std::string wd;
+  std::string save_dir;
+
+  nh_private.getParam("publish_framerate", publish_framerate_);
+  nh_private.getParam("save_dir", save_dir);
+  nh_private.getParam("wd", wd);
 
   VLOG(1) << "Found parameter publish_framerate " << publish_framerate_;
-  VLOG(1) << "Found parameter global_log_intensity_state_update_frequency " << global_log_intensity_state_update_frequency_;
+
+  if (save_dir.empty())
+  {
+    save_images_ = false;
+  }
+  else
+  {
+    save_images_ = true;
+    save_dir_ = pure_event_reconstruction::utils::fullpath(wd, save_dir);
+    if (save_dir_.back() != '/')
+    {
+      save_dir_.append("/");
+    }
+
+    VLOG(1) << "Saving images to " << save_dir_ ;
+  }
 
   // setup subscribers and publishers
   event_sub_ = nh_.subscribe("events", EVENT_SUB_QUEUE_SIZE, &High_pass_filter::eventsCallback, this);
@@ -59,8 +78,7 @@ void High_pass_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
     initialise_image_states(msg->height, msg->width);
     log_intensity_state_initialised_ = true;
   }
-  // only create image if at least one subscriber
-  if (msg->events.size() > 0 && intensity_estimate_pub_.getNumSubscribers() > 0)
+  if (msg->events.size() > 0)
   {
     // count events per pixels with polarity
     for (int i = 0; i < msg->events.size(); ++i)
@@ -94,13 +112,9 @@ void High_pass_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
       t_next_recalibrate_contrast_thresholds_ = ts + 1 / contrast_threshold_recalibration_frequency;
     }
 
-    if (publish_framerate_ <= 0)
+    if (publish_framerate_ < 0)
     {
-      if (ts > t_next_log_intensity_update_)
-      {
-        update_log_intensity_state_global(ts);
-        t_next_log_intensity_update_ = ts + 1 / global_log_intensity_state_update_frequency_;
-      }
+      update_log_intensity_state_global(ts);
       publish_intensity_estimate(msg->events.back().ts);
     }
   }
@@ -234,15 +248,21 @@ void High_pass_filter::publish_intensity_estimate(const ros::Time& timestamp)
       const double bilateral_sigma = spatial_filter_sigma_*25;
       cv::bilateralFilter(display_image, filtered_display_image, 5, bilateral_sigma, bilateral_sigma);
     }
-  } else
-  {
-    filtered_display_image = display_image;
+    display_image = filtered_display_image; // data is not copied
   }
 
   cv_image.encoding = "mono8";
   cv_image.header.stamp = timestamp;
-  cv_image.image = filtered_display_image;
+  cv_image.image = display_image;
   intensity_estimate_pub_.publish(cv_image.toImageMsg());
+
+  if (save_images_)
+  {
+    static int image_counter = 0;
+    std::string save_path = save_dir_ + "image" + std::to_string(image_counter) + ".png";
+    cv::imwrite(save_path, display_image);
+    image_counter++;
+  }
 }
 
 void High_pass_filter::convert_log_intensity_state_to_display_image(cv::Mat& image_out, const double& ts)

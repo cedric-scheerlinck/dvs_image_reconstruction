@@ -25,7 +25,7 @@ void BagPlayer::play()
   for (const CallBackMap::value_type& topic_data : subscriptions_)
   {
     topics.emplace_back(topic_data.first);
-    std::cerr << topic_data.first << std::endl;
+//    std::cerr << topic_data.first << std::endl;
   }
 
   rosbag::View view(bag_, rosbag::TopicQuery(topics));

@@ -20,18 +20,22 @@ int main(int argc, char* argv[])
 
   pure_event_reconstruction::High_pass_filter high_pass_filter(nh, nh_private);
 
-  std::string bag_path = "";
+  std::string bag_path;
+  std::string wd;
   nh_private.getParam("bag_path", bag_path);
+  nh_private.getParam("wd", wd);
 
   bool realtime = bag_path.empty();
 
   if (realtime)
   {
-    VLOG(1) << "Running in real-time mode." << realtime;
+    VLOG(1) << "Running in real-time mode";
 
   ros::spin();
   } else if (!realtime)
   {
+    bag_path = pure_event_reconstruction::utils::fullpath(wd, bag_path);
+
     VLOG(1) << "Path to rosbag: " << bag_path;
 
     std::string event_topic_name = pure_event_reconstruction::utils::find_event_topic(bag_path);
@@ -39,7 +43,6 @@ int main(int argc, char* argv[])
     VLOG(1) << "Reading events from: " << event_topic_name;
 
     // attach relevant callbacks to topics
-
     rpg_common_ros::BagPlayer player(bag_path);
     player.attachCallbackToTopic(event_topic_name,
         [&](const rosbag::MessageInstance& msg)
@@ -51,9 +54,10 @@ int main(int argc, char* argv[])
     );
 
     player.play();
+    VLOG(1) << "...done!";
 
   }
-
+  ros::shutdown();
   return 0;
 }
 
