@@ -55,5 +55,9 @@ Datasets can be found [here](https://drive.google.com/drive/folders/1Jv73p1-Hi56
 [![dvs_image_reconstruction_video](images/thumbnail_combined.png)](https://youtu.be/bZ0ZKido0Ag)
 [https://youtu.be/bZ0ZKido0Ag](https://youtu.be/bZ0ZKido0Ag)
 
+## Website
 
+The webpage for this project with links to data, slides, paper and more can be found here:
+
+[https://cedric-scheerlinck.github.io/continuous-time-intensity-estimation](https://cedric-scheerlinck.github.io/continuous-time-intensity-estimation)
 
