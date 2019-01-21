@@ -1,10 +1,8 @@
 #pragma once
 
-#include <functional>
+#include <rosbag/bag.h>
 #include <string>
 #include <unordered_map>
-
-#include <rosbag/bag.h>
 
 namespace rpg_common_ros {
 

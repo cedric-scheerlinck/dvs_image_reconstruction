@@ -1,7 +1,5 @@
 #include "complementary_filter/bag_player.h"
 
-#include <iostream>
-
 #include <glog/logging.h>
 #include <rosbag/view.h>
 
@@ -25,7 +23,6 @@ void BagPlayer::play()
   for (const CallBackMap::value_type& topic_data : subscriptions_)
   {
     topics.emplace_back(topic_data.first);
-//    std::cerr << topic_data.first << std::endl;
   }
 
   rosbag::View view(bag_, rosbag::TopicQuery(topics));

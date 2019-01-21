@@ -1,33 +1,13 @@
 #pragma once
 
-#include <string>
-#include <stdio.h>
-
-// boost
-#include <boost/thread.hpp>
-#include <boost/thread/thread_time.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-
-// dynamic reconfigure
-#include <dynamic_reconfigure/server.h>
 #include <complementary_filter/complementary_filterConfig.h>
-
-#include <cv_bridge/cv_bridge.h>
-
-// messages
-#include <dvs_msgs/Event.h>
 #include <dvs_msgs/EventArray.h>
+#include <dynamic_reconfigure/server.h>
 #include <image_transport/image_transport.h>
-#include <opencv2/core/core.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/core/mat.hpp>
 #include <ros/ros.h>
-#include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/Image.h>
-#include <sensor_msgs/image_encodings.h>
-
-// google logging
-#include <glog/logging.h>
-#include <gflags/gflags.h>
+#include <string>
 
 namespace complementary_filter
 {
@@ -37,13 +17,15 @@ class Complementary_filter
 public:
   Complementary_filter(ros::NodeHandle & nh, ros::NodeHandle nh_private);
   void eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg);
-  void set_parameters();
+  void imageCallback(const sensor_msgs::Image::ConstPtr& msg);
+  void offlineEventsCallback(const dvs_msgs::EventArray::ConstPtr& msg);
+  void load_images(const sensor_msgs::Image::ConstPtr& msg);
+
   virtual ~Complementary_filter();
 
 private:
   ros::NodeHandle nh_;
 
-  void imageCallback(const sensor_msgs::Image::ConstPtr& msg);
   void reconfigureCallback(complementary_filter::complementary_filterConfig &config, uint32_t level);
 
   void initialise_image_states(const uint32_t& rows, const uint32_t& columns);
@@ -73,6 +55,9 @@ private:
   image_transport::Publisher intensity_estimate_pub_;
   image_transport::Publisher cutoff_frequency_array_pub_;
 
+  std::vector<double> image_timestamps_; // only to be used in offline mode
+  std::vector<cv::Mat> images_;
+
   // double
   cv::Mat log_intensity_state_;
   cv::Mat log_intensity_aps_frame_last_;
@@ -100,7 +85,8 @@ private:
   double contrast_threshold_off_adaptive_;
   double t_next_update_log_intensity_state_global_;
   double t_next_recalibrate_contrast_thresholds_;
-  double global_log_intensity_state_update_frequency_;
+  double t_next_publish_;
+  double publish_framerate_;
   double contrast_threshold_recalibration_frequency_;
 //  double dynamic_range_extension_;
   double intensity_min_;

@@ -1,6 +1,6 @@
-#include "../include/complementary_filter/complementary_filter.h"
+#include "complementary_filter/complementary_filter.h"
 
-#include <std_msgs/Float32.h>
+#include <cv_bridge/cv_bridge.h>
 #include <glog/logging.h>
 
 enum {GAUSSIAN, BILATERAL};
@@ -19,10 +19,10 @@ Complementary_filter::Complementary_filter(ros::NodeHandle & nh, ros::NodeHandle
   const int CUTOFF_FREQUENCY_PUB_QUEUE_SIZE = 1;
 
   // read parameters from launch file
-  nh_private.param<double>("global_log_intensity_state_update_frequency", global_log_intensity_state_update_frequency_, 30.0);
-  nh_private.param<double>("contrast_threshold_recalibration_frequency", contrast_threshold_recalibration_frequency_, 10.0);
+  nh_private.getParam("publish_framerate", publish_framerate_);
+  nh_private.getParam("contrast_threshold_recalibration_frequency", contrast_threshold_recalibration_frequency_);
 
-  VLOG(1) << "Found parameter global_log_intensity_state_update_frequency " << global_log_intensity_state_update_frequency_;
+  VLOG(1) << "Found parameter publish_framerate " << publish_framerate_;
   VLOG(1) << "Found parameter contrast_threshold_recalibration_frequency " << contrast_threshold_recalibration_frequency_;
 
   // setup subscribers and publishers
@@ -50,6 +50,7 @@ Complementary_filter::~Complementary_filter()
   intensity_estimate_pub_.shutdown();
 }
 
+
 void Complementary_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
 {
   // initialisation only to be performed once at the beginning
@@ -58,7 +59,7 @@ void Complementary_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& 
     initialise_image_states(msg->height, msg->width);
     log_intensity_state_initialised_ = true;
   }
-  if (msg->events.size() > 0 && intensity_estimate_pub_.getNumSubscribers() >= 1)
+  if (msg->events.size() > 0)
   {
 //     count events per pixels with polarity
     for (int i = 0; i < msg->events.size(); ++i)
@@ -77,15 +78,20 @@ void Complementary_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& 
       {
         event_count_off_array_.at<double>(y, x)++;
       }
+
+      if (publish_framerate_ > 0 && ts > t_next_publish_)
+      {
+        update_log_intensity_state_global(ts);
+        publish_intensity_estimate(msg->events[i].ts);
+        t_next_publish_ = ts + 1 / publish_framerate_;
+      }
     }
 
     const double ts = msg->events.back().ts.toSec();
 
-// perform some action every fixed time-interval
-    if (ts > t_next_update_log_intensity_state_global_)
+    if (publish_framerate_ < 0)
     {
       update_log_intensity_state_global(ts);
-      t_next_update_log_intensity_state_global_ = ts + 1.0 / global_log_intensity_state_update_frequency_;
       publish_intensity_estimate(msg->events.back().ts);
     }
 
@@ -98,8 +104,8 @@ void Complementary_filter::imageCallback(const sensor_msgs::Image::ConstPtr& msg
   if (log_intensity_state_initialised_)
   {
     const double ts = msg->header.stamp.toSec();
-    double minVal;
-    double maxVal;
+//    double minVal;
+//    double maxVal;
     cv::Mat last_image;
     cv_bridge::CvImagePtr cv_ptr;
     try
@@ -112,8 +118,8 @@ void Complementary_filter::imageCallback(const sensor_msgs::Image::ConstPtr& msg
     }
 
     cv_ptr->image.convertTo(last_image, CV_64FC1, 1 / 255.0, 1);
-    cv::minMaxLoc(last_image, &minVal, &maxVal);
-    VLOG_EVERY_N(4, 10) << "image_raw natural range [" << minVal << ", " << maxVal << "] | expected [1, 2]";
+//    cv::minMaxLoc(last_image, &minVal, &maxVal);
+//    VLOG_EVERY_N(4, 10) << "image_raw natural range [" << minVal << ", " << maxVal << "] | expected [1, 2]";
 
     // put logarithm of APS frame into class member variable
     cv::log(last_image, log_intensity_aps_frame_last_);
@@ -410,6 +416,55 @@ bool Complementary_filter::log_aps_pixel_within_allowed_range
   return returnValue;
 }
 
+void Complementary_filter::load_images(const sensor_msgs::Image::ConstPtr& msg)
+{
+
+  cv::Mat image;
+  cv_bridge::CvImagePtr cv_ptr;
+  try
+  {
+    cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::MONO8);
+  } catch (cv_bridge::Exception& e)
+  {
+    ROS_ERROR("cv_bridge exception: %s", e.what());
+    return;
+  }
+
+  cv_ptr->image.convertTo(image, CV_64FC1, 1 / 255.0, 1);
+  images_.push_back(image);
+  image_timestamps_.push_back(msg->header.stamp.toSec());
+
+}
+
+void Complementary_filter::offlineEventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
+{
+  // smart wrapper for eventsCallback that guarantees correct event/image ordering.
+
+  static int image_idx = 0;
+  static std::vector<dvs_msgs::Event> events;
+  for(auto e : msg->events)
+  {
+    if (image_idx < image_timestamps_.size() - 1)
+    {
+      if (e.ts.toSec() > image_timestamps_[image_idx])
+      {
+        dvs_msgs::EventArray event_array_msg;
+        event_array_msg.events = events;
+        event_array_msg.width = msg->width;
+        event_array_msg.height = msg->height;
+        event_array_msg.header.stamp = events.back().ts;
+        dvs_msgs::EventArrayConstPtr event_array_pointer = boost::make_shared<dvs_msgs::EventArray>(event_array_msg);
+        eventsCallback(event_array_pointer);
+        events.clear();
+        // set new image
+        cv::log(images_[image_idx], log_intensity_aps_frame_last_);
+        image_idx++;
+      }
+      events.push_back(e);
+    }
+  }
+}
+
 void Complementary_filter::reset_all()
 {
   ts_map_.setTo(0);
@@ -419,7 +474,7 @@ void Complementary_filter::reset_all()
   event_count_on_array_.setTo(0);
   event_count_off_array_.setTo(0);
   t_next_recalibrate_contrast_thresholds_ = 0;
-  t_next_update_log_intensity_state_global_ = 0;
+  t_next_publish_ = 0;
   VLOG(3) << "full reset";
 }
 

@@ -1,18 +1,16 @@
 #include "complementary_filter/utils.h"
-#include <algorithm>
-#include <string>
+
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
-#include <glog/logging.h>
 
 namespace complementary_filter {
 namespace utils {
 
-std::string find_event_topic(const std::string bag_path)
+std::string find_topic_by_type(const std::string bag_path, const std::string message_type)
 {
-  // determine topics that contain messages of type "dvs_msgs/EventArray"
+  // returns the topic of the first message of type message_type in the bag specified in bag_path.
 
-  std::string event_topic_name="";
+  std::string topic_name="";
   rosbag::Bag input_bag;
   try
   {
@@ -26,18 +24,18 @@ std::string find_event_topic(const std::string bag_path)
 
   for(const rosbag::MessageInstance& m : view)
   {
-    if(m.getDataType() == "dvs_msgs/EventArray")
+    if(m.getDataType() == message_type)
     {
-      event_topic_name = m.getTopic();
+      topic_name = m.getTopic();
       break;
     }
   }
   input_bag.close();
-  return event_topic_name;
+  return topic_name;
 }
 
 
-std::string fullpath(const std::string wd, const std::string path)
+std::string create_fullpath(const std::string wd, const std::string path)
 {
   // checks if path seems like a full path, if not, prepend wd in a smart way
 
