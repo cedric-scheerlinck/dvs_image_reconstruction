@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string>
+#include <stdio.h>
+
 // boost
 #include <boost/thread.hpp>
 #include <boost/thread/thread_time.hpp>
@@ -33,12 +36,13 @@ class Complementary_filter
 {
 public:
   Complementary_filter(ros::NodeHandle & nh, ros::NodeHandle nh_private);
+  void eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg);
+  void set_parameters();
   virtual ~Complementary_filter();
 
 private:
   ros::NodeHandle nh_;
 
-  void eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg);
   void imageCallback(const sensor_msgs::Image::ConstPtr& msg);
   void reconfigureCallback(complementary_filter::complementary_filterConfig &config, uint32_t level);
 
@@ -80,11 +84,12 @@ private:
   cv::Mat contrast_threshold_off_array_;
   cv::Mat cutoff_frequency_array_;
 
-
-
   bool log_intensity_state_initialised_;
   bool adaptive_contrast_threshold_;
   bool adaptive_cutoff_frequency_;
+  bool save_images_;
+
+  std::string save_dir_;
 
   int spatial_smoothing_method_;
 
