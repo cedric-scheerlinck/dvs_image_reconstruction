@@ -5,10 +5,11 @@
   
   <!-- pure event reconstruction -->
   <node name="reconstruction_node" pkg="pure_event_reconstruction" type="reconstruction_node" output="screen" args="--v=3">
-    <param name="wd" value="$(env PWD)"/>
+    <param name="working_dir" value="$(env PWD)"/>
     <param name="bag_path" type="str" value="$(arg bag_path)"/>
     <param name="save_dir" type="str" value="$(arg save_dir)"/>
 	<param name="publish_framerate" type="double" value="$(arg publish_framerate)"/>
+	
     <remap from="events" to="dvs/events" />
   </node>
   
