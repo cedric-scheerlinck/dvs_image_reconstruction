@@ -1,4 +1,5 @@
 <launch>
+
   <arg name="bag_path" default="" /> 
   <arg name="save_dir" default="" />
   <arg name="publish_framerate" default="60.0" />
@@ -20,7 +21,5 @@
 
   <!-- configure -->
   <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" if="$(eval arg('bag_path') == '')"/> 
-
-
 
 </launch>
