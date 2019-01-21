@@ -14,12 +14,12 @@ High_pass_filter::High_pass_filter(ros::NodeHandle & nh, ros::NodeHandle nh_priv
   constexpr int INTENSITY_ESTIMATE_PUB_QUEUE_SIZE = 1;
   constexpr double EVENT_RETENTION_DURATION = 30;  // seconds. Used for calibrating contrast thresholds.
 
-  std::string wd;
+  std::string working_dir;
   std::string save_dir;
 
   nh_private.getParam("publish_framerate", publish_framerate_);
   nh_private.getParam("save_dir", save_dir);
-  nh_private.getParam("wd", wd);
+  nh_private.getParam("working_dir", working_dir);
 
   VLOG(1) << "Found parameter publish_framerate " << publish_framerate_;
 
@@ -30,7 +30,7 @@ High_pass_filter::High_pass_filter(ros::NodeHandle & nh, ros::NodeHandle nh_priv
   else
   {
     save_images_ = true;
-    save_dir_ = pure_event_reconstruction::utils::fullpath(wd, save_dir);
+    save_dir_ = pure_event_reconstruction::utils::fullpath(working_dir, save_dir);
     if (save_dir_.back() != '/')
     {
       save_dir_.append("/");

@@ -1,4 +1,3 @@
 *.launch
 !davis_mono.launch
 !from_rosbag.launch
-!tmp_save_from_rosbag.launch

@@ -6,7 +6,7 @@
 
 int main(int argc, char* argv[])
 {
-  // Initialize Google's logging library.
+  // Initialize Google's flags and logging libraries.
   google::InitGoogleLogging(argv[0]);
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InstallFailureSignalHandler();
@@ -21,20 +21,21 @@ int main(int argc, char* argv[])
   pure_event_reconstruction::High_pass_filter high_pass_filter(nh, nh_private);
 
   std::string bag_path;
-  std::string wd;
   nh_private.getParam("bag_path", bag_path);
-  nh_private.getParam("wd", wd);
 
-  bool realtime = bag_path.empty();
+  bool realtime = bag_path.empty(); // used to determine whether to use realtime or offline mode
 
   if (realtime)
   {
     VLOG(1) << "Running in real-time mode";
-
-  ros::spin();
-  } else if (!realtime)
+    ros::spin();
+  }
+  else if (!realtime)
   {
-    bag_path = pure_event_reconstruction::utils::fullpath(wd, bag_path);
+    std::string working_dir;
+    nh_private.getParam("working_dir", working_dir);
+
+    bag_path = pure_event_reconstruction::utils::fullpath(working_dir, bag_path);
 
     VLOG(1) << "Path to rosbag: " << bag_path;
 
@@ -57,14 +58,7 @@ int main(int argc, char* argv[])
     VLOG(1) << "...done!";
 
   }
+
   ros::shutdown();
   return 0;
 }
-
-
-//    if (topic_count > 1)
-//    {
-//      std::cerr << "More than one event topic detected.\n"
-//          "Please specify one event topic as input argument (topic:=<event_topic_name>)."
-//          << std::endl;
-//    }
