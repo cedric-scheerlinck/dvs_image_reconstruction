@@ -2,6 +2,9 @@
 
 #include <cv_bridge/cv_bridge.h>
 #include <glog/logging.h>
+#include <opencv2/opencv.hpp>
+
+#include "complementary_filter/utils.h"
 
 enum {GAUSSIAN, BILATERAL};
 
@@ -18,9 +21,32 @@ Complementary_filter::Complementary_filter(ros::NodeHandle & nh, ros::NodeHandle
   const int INTENSITY_ESTIMATE_PUB_QUEUE_SIZE = 1;
   const int CUTOFF_FREQUENCY_PUB_QUEUE_SIZE = 1;
 
+  std::string working_dir;
+  std::string save_dir;
+
   // read parameters from launch file
   nh_private.getParam("publish_framerate", publish_framerate_);
   nh_private.getParam("contrast_threshold_recalibration_frequency", contrast_threshold_recalibration_frequency_);
+  nh_private.getParam("save_dir", save_dir);
+  nh_private.getParam("working_dir", working_dir);
+
+  VLOG(1) << "Found parameter publish_framerate " << publish_framerate_;
+
+  if (save_dir.empty())
+  {
+    save_images_ = false;
+  }
+  else
+  {
+    save_images_ = true;
+    save_dir_ = complementary_filter::utils::create_fullpath(working_dir, save_dir);
+    if (save_dir_.back() != '/')
+    {
+      save_dir_.append("/");
+    }
+
+    VLOG(1) << "Saving images to " << save_dir_ ;
+  }
 
   VLOG(1) << "Found parameter publish_framerate " << publish_framerate_;
   VLOG(1) << "Found parameter contrast_threshold_recalibration_frequency " << contrast_threshold_recalibration_frequency_;
@@ -427,6 +453,14 @@ void Complementary_filter::publish_intensity_estimate(const ros::Time& timestamp
   cv_image.header.stamp = timestamp;
   cv_image.image = filtered_display_image;
   intensity_estimate_pub_.publish(cv_image.toImageMsg());
+
+  if (save_images_)
+  {
+    static int image_counter = 0;
+    std::string save_path = save_dir_ + "image" + std::to_string(image_counter) + ".png";
+    cv::imwrite(save_path, display_image);
+    image_counter++;
+  }
 }
 
 void Complementary_filter::publish_cutoff_frequency_array(const ros::Time& timestamp)
