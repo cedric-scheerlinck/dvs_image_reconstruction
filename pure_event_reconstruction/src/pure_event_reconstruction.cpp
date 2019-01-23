@@ -1,7 +1,7 @@
 #include "pure_event_reconstruction/pure_event_reconstruction.h"
-#include "pure_event_reconstruction/utils.h"
 #include <std_msgs/Float32.h>
 #include <glog/logging.h>
+#include "pure_event_reconstruction/utils.h"
 
 enum {GAUSSIAN, BILATERAL};
 
