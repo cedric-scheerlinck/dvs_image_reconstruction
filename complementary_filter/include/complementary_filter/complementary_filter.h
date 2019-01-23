@@ -33,7 +33,7 @@ private:
                                   const bool& polarity);
   void update_log_intensity_state_global(const double& ts);
   void recalibrate_cutoff_frequency_array();
-  void recalibrate_contrast_thresholds();
+  void recalibrate_contrast_thresholds(const double& ts);
   void update_xy_cutoff_frequency(const int& row,const int& col, const double& lower_bound, const double& upper_bound);
   void update_xy_contrast_threshold(const uint32_t& row, const uint32_t& col, const double& log_aps_change,
                                     const double& event_count_on_max, const double& event_count_off_max);
@@ -44,7 +44,6 @@ private:
   void print_if_negative(const cv::Mat array);
   bool log_aps_pixel_within_allowed_range(const uint32_t& row, const uint32_t& col,
                                           const double& min, const double& max);
-  void reset_all();
 
   boost::shared_ptr<dynamic_reconfigure::Server<complementary_filter::complementary_filterConfig> > server_;
   dynamic_reconfigure::Server<complementary_filter::complementary_filterConfig>::CallbackType dynamic_reconfigure_callback_;
@@ -62,17 +61,18 @@ private:
   cv::Mat log_intensity_state_;
   cv::Mat log_intensity_aps_frame_last_;
   cv::Mat log_intensity_aps_frame_previous_;
-  cv::Mat ts_map_;
+  cv::Mat ts_array_;
   cv::Mat event_count_on_array_;
   cv::Mat event_count_off_array_;
   cv::Mat contrast_threshold_on_array_;
   cv::Mat contrast_threshold_off_array_;
   cv::Mat cutoff_frequency_array_;
 
-  bool log_intensity_state_initialised_;
+  bool initialised_;
   bool adaptive_contrast_threshold_;
   bool adaptive_cutoff_frequency_;
   bool save_images_;
+  bool recalibrate_contrast_thresholds_initialised_;
 
   std::string save_dir_;
 
@@ -83,8 +83,6 @@ private:
   double contrast_threshold_off_user_defined_;
   double contrast_threshold_on_adaptive_;
   double contrast_threshold_off_adaptive_;
-  double t_next_update_log_intensity_state_global_;
-  double t_next_recalibrate_contrast_thresholds_;
   double t_next_publish_;
   double publish_framerate_;
   double contrast_threshold_recalibration_frequency_;
