@@ -30,8 +30,12 @@ In another terminal launch the package:
     roslaunch pure_event_reconstruction from_rosbag.launch bag_path:=<path/to/input/rosbag.bag> save_dir:=<directory/to/save/images/> publish_framerate:=<framerate>
     
 where bag_path:=, save_dir:=, and publish_framerate:= are optional command-line arguments.
-To pre-set dynamic reconfigure parameters, first launch the package without specifying bag_path:= and modify (or load) parameters, then (without closing roscore) close and re-launch the package with bag_path:=.
-You can save and load reconfigure parameters to and from .yaml files using reconfigure_gui.
+To pre-set [dynamic reconfigure parameters](#reconfigure), first launch the package without specifying bag_path:= and modify (or load) parameters, then (without closing roscore) close and re-launch the package with bag_path:=.
+You can [save and load](#reconfigure) reconfigure parameters to and from .yaml files using [rqt_reconfigure](http://wiki.ros.org/rqt_reconfigure).
+
+E.g.
+
+    roslaunch pure_event_reconstruction from_rosbag.launch bag_path:=my_rosbag.bag
 
 #### Old way
 
