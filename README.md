@@ -63,4 +63,4 @@ The webpage for this project with links to data, slides, paper and more can be f
 
 ## Acknowledgements
 
-This research was funded by an Australian Government Research Training Program Scholarship (AGRTP) and the Autralian Research Council through the Australian Centre of Excellence for Robotic Vision (ACRV) CE140100016.
+This research was funded by an Australian Government Research Training Program Scholarship (AGRTP) and the Autralian Research Council through the Australian Centre of Excellence for Robotic Vision ([ACRV](https://www.roboticvision.org/)) CE140100016.
