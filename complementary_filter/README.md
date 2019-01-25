@@ -51,7 +51,7 @@ In another terminal launch the complementary filter:
 
 ![gui_picture](images/reconfigure.png)
 
-**Auto_detect_contrast_thresholds** (may slow performance): Overrides user-set contrast thresholds and instead tries to infer contrast thresholds based on differences between APS image frames.
+**Auto_detect_contrast_thresholds** (may slow performance): Overrides user-set contrast thresholds and instead tries to infer contrast thresholds based on differences between APS image frames. Experience shows this is not typically so reliable, you may get better results disabling this and manually tuning Contrast_threshold_OFF/ON.
 
 **High_dynamic_range_mode** (may slow performance): Adjusts per-pixel Cutoff_frequency based on brightness of APS frame. Pixels with a value close to the minimum or maximum are assigned a lower Cutoff_frequency.
 
