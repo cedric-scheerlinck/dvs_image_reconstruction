@@ -55,7 +55,7 @@ In another terminal launch the complementary filter:
 
 **High_dynamic_range_mode** (may slow performance): Adjusts per-pixel Cutoff_frequency based on brightness of APS frame. Pixels with a value close to the minimum or maximum are assigned a lower Cutoff_frequency.
 
-**Cutoff_frequency:** Gain that determines relative weight of events vs. frames. Cutoff_frequency = 0 is a pure event integrator that does not use frames. Cutoff_frequency = inf. is a zero-order-hold on frames that does not use events.
+**Cutoff_frequency:** Gain that determines relative weight of events vs. frames. Cutoff_frequency = 0 is a pure event integrator that does not use frames. Cutoff_frequency = inf. would be a zero-order-hold on frames that does not use events.
 
 **Contrast_threshold_OFF/ON:** Change in log intensity encoded by one event (caution! Overriden by Auto_detect_contrast_thresholds).
 
