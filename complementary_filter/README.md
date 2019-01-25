@@ -11,6 +11,8 @@ Remember to source your variables from the bash file created when the packages w
 
 ### Live with DAVIS camera:
  
+The package will process event messages and image messages as they arrive, without buffering. If you notice lag between the frames and the events, please try increasing the [streaming rate](streaming-rate) of the camera.
+
 Launch the complementary_filter package with the below command
 
     roslaunch complementary_filter davis_mono.launch
@@ -62,3 +64,8 @@ In another terminal launch the complementary filter:
 **Spatial_filter_sigma:** Strength of post-processing smoothing step (only applies to displayed image). To disable, set to zero.
 
 **Bilateral_filter:** Uses bilateral filter instead of Gaussian (default).
+
+
+### Streaming Rate
+
+![streaming_rate_pic](images/streaming_rate.png)
