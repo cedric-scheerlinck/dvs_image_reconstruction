@@ -31,8 +31,13 @@ In another terminal launch the package:
     roslaunch complementary_filter from_rosbag.launch bag_path:=<path/to/input/rosbag.bag> save_dir:=<directory/to/save/images/> publish_framerate:=<framerate>
     
 where bag_path:=, save_dir:=, and publish_framerate:= are optional command-line arguments.
-To pre-set dynamic reconfigure parameters, first launch the package without specifying bag_path:= and modify (or load) parameters, then (without closing roscore) close and re-launch the package with bag_path:=.
-You can save and load reconfigure parameters to and from .yaml files using reconfigure_gui.
+To pre-set [dynamic reconfigure parameters](#reconfigure), first launch the package without specifying bag_path:= and modify (or load) parameters, then (without closing roscore) close and re-launch the package with bag_path:=.
+You can [save and load](#reconfigure) reconfigure parameters to and from .yaml files using [rqt_reconfigure](http://wiki.ros.org/rqt_reconfigure).
+
+E.g.
+
+    roslaunch complementary_filter from_rosbag.launch bag_path:=my_rosbag.bag
+
 
 #### Old way
 Open a terminal launch roscore:
@@ -51,11 +56,11 @@ In another terminal launch the complementary filter:
 
 ![gui_picture](images/reconfigure.png)
 
-**Auto_detect_contrast_thresholds** (may slow performance): Overrides user-set contrast thresholds and instead tries to infer contrast thresholds based on differences between APS image frames.
+**Auto_detect_contrast_thresholds** (may slow performance): Overrides user-set contrast thresholds and instead tries to infer contrast thresholds based on differences between APS image frames. Experience shows this is not typically so reliable, you may get better results disabling this and manually tuning Contrast_threshold_OFF/ON.
 
 **High_dynamic_range_mode** (may slow performance): Adjusts per-pixel Cutoff_frequency based on brightness of APS frame. Pixels with a value close to the minimum or maximum are assigned a lower Cutoff_frequency.
 
-**Cutoff_frequency:** Gain that determines relative weight of events vs. frames. Cutoff_frequency = 0 is a pure event integrator that does not use frames. Cutoff_frequency = inf. is a zero-order-hold on frames that does not use events.
+**Cutoff_frequency:** Gain that determines relative weight of events vs. frames. Cutoff_frequency = 0 is a pure event integrator that does not use frames. Cutoff_frequency = inf. would be a zero-order-hold on frames that does not use events.
 
 **Contrast_threshold_OFF/ON:** Change in log intensity encoded by one event (caution! Overriden by Auto_detect_contrast_thresholds).
 
