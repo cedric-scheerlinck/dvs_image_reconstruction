@@ -56,7 +56,6 @@ private:
   void convert_log_intensity_state_to_display_image(cv::Mat& display_image, const double& ts);
   void minMaxLocRobust(const cv::Mat& image, double* lower_bound, double* upper_bound,
                                           const double& percentage_pixels_to_discard);
-  void reset_all();
 
   // dynamic reconfigure
   boost::shared_ptr<dynamic_reconfigure::Server<pure_event_reconstruction::pure_event_reconstructionConfig> > server_;
@@ -71,11 +70,11 @@ private:
   cv::Mat leaky_event_count_off_;
 
   // last update time-stamp map (similar to surface of active events)
-  cv::Mat ts_map_; // for log_intensity_state_
-  cv::Mat ts_map_on_; // for leaky_event_count_on_
-  cv::Mat ts_map_off_; // for leaky_event_count_off_
+  cv::Mat ts_array_; // for log_intensity_state_
+  cv::Mat ts_array_on_; // for leaky_event_count_on_
+  cv::Mat ts_array_off_; // for leaky_event_count_off_
 
-  bool log_intensity_state_initialised_;
+  bool initialised_;
   bool adaptive_contrast_threshold_;
   bool adaptive_dynamic_range_;
   bool save_images_;

@@ -43,7 +43,7 @@ High_pass_filter::High_pass_filter(ros::NodeHandle & nh, ros::NodeHandle nh_priv
   intensity_estimate_pub_ = it_.advertise("pure_event_reconstruction/intensity_estimate", INTENSITY_ESTIMATE_PUB_QUEUE_SIZE);
 
   // flags and counters
-  log_intensity_state_initialised_ = false;
+  initialised_ = false;
 
   // low-pass parameter to reach 95% of a constant signal in EVENT_RETENTION_DURATION seconds.
   event_count_cutoff_frequency_ = -std::log(1 - 0.95)/EVENT_RETENTION_DURATION;  // rad/s.
@@ -70,10 +70,9 @@ High_pass_filter::~High_pass_filter()
 void High_pass_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
 {
   // initialisation only to be performed once at the beginning
-  if (!log_intensity_state_initialised_)
+  if (!initialised_)
   {
     initialise_image_states(msg->height, msg->width);
-    log_intensity_state_initialised_ = true;
   }
   if (msg->events.size() > 0)
   {
@@ -87,7 +86,10 @@ void High_pass_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
         const double ts = msg->events[i].ts.toSec();
         const bool polarity = msg->events[i].polarity;
 
-        update_leaky_event_count(ts, x, y, polarity);
+        if (adaptive_contrast_threshold_)
+        {
+          update_leaky_event_count(ts, x, y, polarity);
+        }
 
         update_log_intensity_state(ts, x, y, polarity);
 
@@ -102,7 +104,7 @@ void High_pass_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
 
     const double ts = msg->events.back().ts.toSec();
 
-    if (ts > t_next_recalibrate_contrast_thresholds_ )
+    if (adaptive_contrast_threshold_ && (ts > t_next_recalibrate_contrast_thresholds_ ))
     {
       constexpr double contrast_threshold_recalibration_frequency = 20.0;  // Hz
       recalibrate_contrast_thresholds(ts);
@@ -122,55 +124,64 @@ void High_pass_filter::initialise_image_states(const uint32_t& rows, const uint3
   log_intensity_state_ = cv::Mat::zeros(rows, columns, CV_64FC1);
   leaky_event_count_on_ = cv::Mat::zeros(rows, columns, CV_64FC1);
   leaky_event_count_off_ = cv::Mat::zeros(rows, columns, CV_64FC1);
-  ts_map_ = cv::Mat::zeros(rows, columns, CV_64FC1);
-  ts_map_on_ = cv::Mat::zeros(rows, columns, CV_64FC1);
-  ts_map_off_ = cv::Mat::zeros(rows, columns, CV_64FC1);
+  ts_array_ = cv::Mat::zeros(rows, columns, CV_64FC1);
+  ts_array_on_ = cv::Mat::zeros(rows, columns, CV_64FC1);
+  ts_array_off_ = cv::Mat::zeros(rows, columns, CV_64FC1);
+
+  t_next_publish_ = 0.0;
+  t_next_recalibrate_contrast_thresholds_ = 0.0;
+  t_next_log_intensity_update_ = 0.0;
+
+  initialised_ = true;
+
+  VLOG(2) << "Initialised!";
+
 }
 
 void High_pass_filter::update_log_intensity_state(const double& ts,
     const int& x, const int& y, const bool& polarity)
 {
-  const double delta_t = (ts - ts_map_.at<double>(y, x));
+  const double delta_t = (ts - ts_array_.at<double>(y, x));
   double contrast_threshold;
   if (delta_t < 0)
   {
-    reset_all();
+    LOG(WARNING) << "Warning: non-monotonic timestamp detected, resetting...";
+    initialise_image_states(log_intensity_state_.rows, log_intensity_state_.cols);
+    return;
+  }
+
+  if (adaptive_contrast_threshold_)
+  {
+    contrast_threshold = (polarity) ? contrast_threshold_on_adaptive_ : contrast_threshold_off_adaptive_;
   } else
   {
-    if (adaptive_contrast_threshold_)
-    {
-      contrast_threshold = (polarity) ? contrast_threshold_on_adaptive_ : contrast_threshold_off_adaptive_;
-    } else
-    {
-      contrast_threshold = (polarity) ? contrast_threshold_on_user_defined_ : contrast_threshold_off_user_defined_;
-    }
-    log_intensity_state_.at<double>(y, x) = std::exp(
-        -cutoff_frequency_global_ * delta_t - cutoff_frequency_per_event_component_) * log_intensity_state_.at<double>(y, x)
-        + contrast_threshold;
-    ts_map_.at<double>(y, x) = ts;
+    contrast_threshold = (polarity) ? contrast_threshold_on_user_defined_ : contrast_threshold_off_user_defined_;
   }
+  log_intensity_state_.at<double>(y, x) = std::exp(
+      -cutoff_frequency_global_ * delta_t - cutoff_frequency_per_event_component_) * log_intensity_state_.at<double>(y, x)
+      + contrast_threshold;
+  ts_array_.at<double>(y, x) = ts;
+
 }
 
 void High_pass_filter::update_log_intensity_state_global(const double& ts)
 {
   cv::Mat beta;
-  cv::Mat delta_t = ts - ts_map_;
-  //  print_if_negative(delta_t);
+  cv::Mat delta_t = ts - ts_array_;
   double min;
-  double max;
-  cv::minMaxLoc(delta_t, &min, &max);
+  cv::minMaxLoc(delta_t, &min, nullptr);
   if (min < 0)
   {
-    reset_all();
-    VLOG(2) << "negative delta_t detected during update_log_intensity_state(const double& ts)" << std::endl;
-  } else
-  {
-
-  cv::exp(-cutoff_frequency_global_ * (ts - ts_map_), beta);
-
-  log_intensity_state_ = log_intensity_state_.mul(beta);
-  ts_map_.setTo(ts);
+    LOG(WARNING) << "Warning: non-monotonic timestamp detected, resetting...";
+    initialise_image_states(log_intensity_state_.rows, log_intensity_state_.cols);
+    return;
   }
+
+cv::exp(-cutoff_frequency_global_ * (ts - ts_array_), beta);
+
+log_intensity_state_ = log_intensity_state_.mul(beta);
+ts_array_.setTo(ts);
+
 }
 
 void High_pass_filter::update_leaky_event_count(const double& ts, const int& x, const int& y,
@@ -179,22 +190,22 @@ void High_pass_filter::update_leaky_event_count(const double& ts, const int& x, 
   if (polarity)
   {
     // positive ON event
-    const double delta_t = (ts - ts_map_on_.at<double>(y, x));
+    const double delta_t = (ts - ts_array_on_.at<double>(y, x));
     if (delta_t >= 0)
     {
       leaky_event_count_on_.at<double>(y, x) = std::exp(-event_count_cutoff_frequency_ * delta_t)
           * leaky_event_count_on_.at<double>(y, x) + 1;
-      ts_map_on_.at<double>(y, x) = ts;
+      ts_array_on_.at<double>(y, x) = ts;
     }
   } else
   {
     // negative OFF event
-    const double delta_t = (ts - ts_map_off_.at<double>(y, x));
+    const double delta_t = (ts - ts_array_off_.at<double>(y, x));
     if (delta_t >= 0)
     {
       leaky_event_count_off_.at<double>(y, x) = std::exp(-event_count_cutoff_frequency_ * delta_t)
           * leaky_event_count_off_.at<double>(y, x) + 1;
-      ts_map_off_.at<double>(y, x) = ts;
+      ts_array_off_.at<double>(y, x) = ts;
     }
   }
 }
@@ -205,14 +216,14 @@ void High_pass_filter::recalibrate_contrast_thresholds(const double& ts)
   //first do global update
   cv::Mat decay_factor_on;
   cv::Mat decay_factor_off;
-  cv::exp(-event_count_cutoff_frequency_ * (ts - ts_map_on_), decay_factor_on);
-  cv::exp(-event_count_cutoff_frequency_ * (ts - ts_map_off_), decay_factor_off);
+  cv::exp(-event_count_cutoff_frequency_ * (ts - ts_array_on_), decay_factor_on);
+  cv::exp(-event_count_cutoff_frequency_ * (ts - ts_array_off_), decay_factor_off);
 
   leaky_event_count_on_ = leaky_event_count_on_.mul(decay_factor_on);
   leaky_event_count_off_ = leaky_event_count_off_.mul(decay_factor_off);
 
-  ts_map_on_.setTo(ts);
-  ts_map_off_.setTo(ts);
+  ts_array_on_.setTo(ts);
+  ts_array_off_.setTo(ts);
 
   const double sum_on = cv::sum(leaky_event_count_on_)[0];
   const double sum_off = cv::sum(leaky_event_count_off_)[0];
@@ -329,19 +340,6 @@ void High_pass_filter::minMaxLocRobust(const cv::Mat& image, double* robust_min,
   *robust_max = image_as_row_sorted.at<double>(single_row_idx_max);
 }
 
-void High_pass_filter::reset_all()
-{
-  log_intensity_state_.setTo(0);
-  leaky_event_count_on_.setTo(0);
-  leaky_event_count_off_.setTo(0);
-  ts_map_.setTo(0);
-  ts_map_off_.setTo(0);
-  ts_map_on_.setTo(0);
-
-  t_next_publish_ = 0.0;
-  t_next_recalibrate_contrast_thresholds_ = 0.0;
-  t_next_log_intensity_update_ = 0.0;
-}
 void High_pass_filter::reconfigureCallback(pure_event_reconstruction::pure_event_reconstructionConfig &config, uint32_t level)
 {
   cutoff_frequency_global_ = config.Cutoff_frequency*2*M_PI;

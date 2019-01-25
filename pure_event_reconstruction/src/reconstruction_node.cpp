@@ -1,4 +1,5 @@
 #include <dvs_msgs/EventArray.h>
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <ros/ros.h>
 #include <rosbag/message_instance.h>
