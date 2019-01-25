@@ -9,7 +9,7 @@
   <node name="reconstruction_node" pkg="complementary_filter" type="reconstruction_node" output="screen" args="--v=3">
     <param name="bag_path" type="str" value=""/> <!-- this parameter enables "realtime" mode when it is empty string -->
     <param name="publish_framerate" type="double" value="$(arg publish_framerate)"/>
-    <param name="contrast_threshold_recalibration_frequency" type="double" value="10.0"/>
+    <param name="contrast_threshold_recalibration_frequency" type="double" value="7.0"/>
 
     <remap from="events" to="dvs/events" />
     <remap from="image_raw" to="dvs/image_raw" />

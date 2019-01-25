@@ -33,25 +33,24 @@ private:
                                   const bool& polarity);
   void update_log_intensity_state_global(const double& ts);
   void recalibrate_cutoff_frequency_array();
-  void recalibrate_contrast_thresholds(const double& ts);
+  void recalibrate_contrast_thresholds(const ros::Time& timestamp);
   void update_xy_cutoff_frequency(const int& row,const int& col, const double& lower_bound, const double& upper_bound);
   void update_xy_contrast_threshold(const uint32_t& row, const uint32_t& col, const double& log_aps_change,
-                                    const double& event_count_on_max, const double& event_count_off_max);
+                                    const double& event_count_on_max, const double& event_count_off_max, cv::Mat& used_pix);
   void minMaxLocRobust(const cv::Mat& image, double* robust_min, double* robust_max,
                                              const double& percentage_pixels_to_discard);
   void publish_intensity_estimate(const ros::Time& timestamp);
   void publish_cutoff_frequency_array(const ros::Time& timestamp);
   void print_if_negative(const cv::Mat array);
-  bool log_aps_pixel_within_allowed_range(const uint32_t& row, const uint32_t& col,
-                                          const double& min, const double& max);
 
   boost::shared_ptr<dynamic_reconfigure::Server<complementary_filter::complementary_filterConfig> > server_;
   dynamic_reconfigure::Server<complementary_filter::complementary_filterConfig>::CallbackType dynamic_reconfigure_callback_;
 
   image_transport::Publisher intensity_estimate_pub_;
   image_transport::Publisher cutoff_frequency_array_pub_;
+  image_transport::Publisher used_for_contrast_threshold_recalibration_pub_;
 
-  std::vector<double> image_timestamps_; // only to be used in offline mode
+  std::vector<ros::Time> image_timestamps_; // only to be used in offline mode
   std::vector<cv::Mat> images_;
 
   // double
@@ -64,6 +63,7 @@ private:
   cv::Mat contrast_threshold_on_array_;
   cv::Mat contrast_threshold_off_array_;
   cv::Mat cutoff_frequency_array_;
+
 
   bool initialised_;
   bool adaptive_contrast_threshold_;

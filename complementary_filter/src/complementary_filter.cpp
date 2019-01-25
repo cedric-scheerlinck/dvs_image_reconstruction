@@ -16,8 +16,7 @@ Complementary_filter::Complementary_filter(ros::NodeHandle & nh, ros::NodeHandle
 {
 
   // publisher queue size
-  const int INTENSITY_ESTIMATE_PUB_QUEUE_SIZE = 1;
-  const int CUTOFF_FREQUENCY_PUB_QUEUE_SIZE = 1;
+  const int IMAGE_PUB_QUEUE_SIZE = 1;
 
   std::string working_dir;
   std::string save_dir;
@@ -29,6 +28,7 @@ Complementary_filter::Complementary_filter(ros::NodeHandle & nh, ros::NodeHandle
   nh_private.getParam("working_dir", working_dir);
 
   VLOG(1) << "Found parameter publish_framerate " << publish_framerate_;
+  VLOG(1) << "Found parameter contrast_threshold_recalibration_frequency " << contrast_threshold_recalibration_frequency_;
 
   if (save_dir.empty())
   {
@@ -46,13 +46,11 @@ Complementary_filter::Complementary_filter(ros::NodeHandle & nh, ros::NodeHandle
     VLOG(1) << "Saving images to " << save_dir_ ;
   }
 
-  VLOG(1) << "Found parameter publish_framerate " << publish_framerate_;
-  VLOG(1) << "Found parameter contrast_threshold_recalibration_frequency " << contrast_threshold_recalibration_frequency_;
-
   // setup publishers
   image_transport::ImageTransport it_(nh_);
-  intensity_estimate_pub_ = it_.advertise("complementary_filter/intensity_estimate", INTENSITY_ESTIMATE_PUB_QUEUE_SIZE);
-  cutoff_frequency_array_pub_ = it_.advertise("complementary_filter/cutoff_frequency", CUTOFF_FREQUENCY_PUB_QUEUE_SIZE);
+  intensity_estimate_pub_ = it_.advertise("complementary_filter/intensity_estimate", IMAGE_PUB_QUEUE_SIZE);
+  cutoff_frequency_array_pub_ = it_.advertise("complementary_filter/cutoff_frequency", IMAGE_PUB_QUEUE_SIZE);
+  used_for_contrast_threshold_recalibration_pub_ = it_.advertise("complementary_filter/used_for_ct_calib", IMAGE_PUB_QUEUE_SIZE);
 
   // bool
   initialised_ = false;
@@ -68,15 +66,15 @@ Complementary_filter::~Complementary_filter()
 {
   intensity_estimate_pub_.shutdown();
   cutoff_frequency_array_pub_.shutdown();
+  used_for_contrast_threshold_recalibration_pub_.shutdown();
 }
 
 void Complementary_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
 {
   // initialisation only to be performed once at the beginning
   if (!initialised_)
-  {
     initialise_image_states(msg->height, msg->width);
-  }
+
   if (msg->events.size() > 0)
   {
 //     count events per pixels with polarity
@@ -91,11 +89,12 @@ void Complementary_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& 
 
       if (adaptive_contrast_threshold_)
       {
-        // accumulate all events - the arrays will be cleared by recalibrate_contrast_thresholds(ts)
+        // accumulate all events - the arrays will be cleared by recalibrate_contrast_thresholds(timestamp)
         if (polarity)
         {
           event_count_on_array_.at<double>(y, x)++;
-        } else
+        }
+        else
         {
           event_count_off_array_.at<double>(y, x)++;
         }
@@ -123,12 +122,7 @@ void Complementary_filter::imageCallback(const sensor_msgs::Image::ConstPtr& msg
 {
   // make sure everything has been initialised
   if (!initialised_)
-  {
     return;
-  }
-  const double ts = msg->header.stamp.toSec();
-//    double minVal;
-//    double maxVal;
   cv::Mat last_image;
   cv_bridge::CvImagePtr cv_ptr;
   try
@@ -141,16 +135,12 @@ void Complementary_filter::imageCallback(const sensor_msgs::Image::ConstPtr& msg
   }
 
   cv_ptr->image.convertTo(last_image, CV_64FC1, 1 / 255.0, 1);
-//    cv::minMaxLoc(last_image, &minVal, &maxVal);
-//    VLOG_EVERY_N(4, 10) << "image_raw natural range [" << minVal << ", " << maxVal << "] | expected [1, 2]";
 
   // put logarithm of APS frame into class member variable
   cv::log(last_image, log_intensity_aps_frame_last_);
 
   if (adaptive_contrast_threshold_)
-  {
-    recalibrate_contrast_thresholds(ts);
-  }
+    recalibrate_contrast_thresholds(msg->header.stamp);
 
   if (adaptive_cutoff_frequency_)
   {
@@ -169,7 +159,8 @@ void Complementary_filter::offlineEventsCallback(const dvs_msgs::EventArray::Con
   {
     if (image_idx < image_timestamps_.size() - 1)
     {
-      if (e.ts.toSec() > image_timestamps_[image_idx])
+      const double image_ts = image_timestamps_[image_idx].toSec();
+      if (e.ts.toSec() > image_ts)
       {
         // package events and call eventsCallback
         dvs_msgs::EventArray event_array_msg;
@@ -181,11 +172,15 @@ void Complementary_filter::offlineEventsCallback(const dvs_msgs::EventArray::Con
         eventsCallback(event_array_pointer);
         events.clear();
         // update and set new image
-        update_log_intensity_state_global(image_timestamps_[image_idx]);
+        update_log_intensity_state_global(image_ts);
         cv::log(images_[image_idx], log_intensity_aps_frame_last_);
         if (adaptive_contrast_threshold_)
-        {
           recalibrate_contrast_thresholds(image_timestamps_[image_idx]);
+
+        if (adaptive_cutoff_frequency_)
+        {
+          recalibrate_cutoff_frequency_array();
+          publish_cutoff_frequency_array(image_timestamps_[image_idx]);
         }
         image_idx++;
       }
@@ -205,7 +200,6 @@ void Complementary_filter::initialise_image_states(const uint32_t& rows, const u
   ts_array_ = cv::Mat::zeros(rows, columns, CV_64FC1); // similar to surface of active events
   event_count_on_array_ = cv::Mat::zeros(rows, columns, CV_64FC1);
   event_count_off_array_ = cv::Mat::zeros(rows, columns, CV_64FC1);
-
   contrast_threshold_on_array_ = cv::Mat::ones(rows, columns, CV_64FC1) * init_on;
   contrast_threshold_off_array_ = cv::Mat::ones(rows, columns, CV_64FC1) * init_off;
   cutoff_frequency_array_ = cv::Mat::ones(rows, columns, CV_64FC1) * cutoff_frequency_user_defined_;
@@ -284,16 +278,17 @@ void Complementary_filter::recalibrate_cutoff_frequency_array()
   constexpr double log_intensity_lower = std::log(1 + log_aps_margin);
   constexpr double log_intensity_upper = std::log(2 - log_aps_margin);
 
+  cv::Mat pixel_compromised =
+      (log_intensity_aps_frame_last_ < log_intensity_lower)
+    | (log_intensity_aps_frame_last_ > log_intensity_upper);
+
   cutoff_frequency_array_.setTo(cutoff_frequency_user_defined_);
   for (int row = 0; row < cutoff_frequency_array_.rows; row++)
   {
     for (int col = 0; col < cutoff_frequency_array_.cols; col++)
     {
-      if (!log_aps_pixel_within_allowed_range(row, col, log_intensity_lower, log_intensity_upper))
-      {
+      if (pixel_compromised.at<uint8_t>(row, col))
         update_xy_cutoff_frequency(row, col, log_intensity_lower, log_intensity_upper);
-//        VLOG_EVERY_N(3, 10000) << "log APS pixel outside range " << log_intensity_aps_frame_last_.at<double>(row, col);
-      }
     }
   }
 }
@@ -309,7 +304,8 @@ void Complementary_filter::update_xy_cutoff_frequency(const int& row, const int&
   if (log_aps_value <= lower_bound)
   {
     aps_saturation_severity = (min_log_aps_intensity - log_aps_value)/(min_log_aps_intensity - lower_bound);
-  } else if (log_aps_value >= upper_bound)
+  }
+  else if (log_aps_value >= upper_bound)
   {
     aps_saturation_severity = (max_log_aps_intensity - log_aps_value)/(max_log_aps_intensity - upper_bound);
   }
@@ -317,9 +313,10 @@ void Complementary_filter::update_xy_cutoff_frequency(const int& row, const int&
       (min_fraction + aps_saturation_severity*(1 - min_fraction) )*cutoff_frequency_user_defined_;
 }
 
-void Complementary_filter::recalibrate_contrast_thresholds(const double& ts)
+void Complementary_filter::recalibrate_contrast_thresholds(const ros::Time& timestamp)
 {
   static double t_last = 0; // time of last update
+  const double ts = timestamp.toSec();
   static cv::Mat log_frame_previous;
   if (!recalibrate_contrast_thresholds_initialised_)
   {
@@ -331,8 +328,12 @@ void Complementary_filter::recalibrate_contrast_thresholds(const double& ts)
     return;
   }
 
-  if ((contrast_threshold_recalibration_frequency_ > 0) && (ts > t_last + 1.0 / contrast_threshold_recalibration_frequency_))
+  if ( (contrast_threshold_recalibration_frequency_ > 0)
+      && (ts > t_last + 1.0 / contrast_threshold_recalibration_frequency_) )
   {
+    // full log intensity APS range [log(1), log(2)]
+    constexpr double LOG_INTENSITY_MIN = std::log(1 + 0.15);
+    constexpr double LOG_INTENSTIY_MAX = std::log(2 - 0.15);
     constexpr double PERCENTAGE_PIXELS_TO_DISCARD = 1;
 
     double unused;
@@ -340,6 +341,12 @@ void Complementary_filter::recalibrate_contrast_thresholds(const double& ts)
     double event_count_off_max;
 
     cv::Mat difference_image = log_intensity_aps_frame_last_ - log_frame_previous;
+    cv::Mat valid_pixels = (log_intensity_aps_frame_last_ < LOG_INTENSTIY_MAX)
+                         & (log_intensity_aps_frame_last_ > LOG_INTENSITY_MIN)
+                         & (log_frame_previous < LOG_INTENSTIY_MAX)
+                         & (log_frame_previous > LOG_INTENSITY_MIN);
+
+    cv::Mat used_pix = cv::Mat::zeros(log_intensity_aps_frame_last_.size(), CV_8UC1);
 
     minMaxLocRobust(event_count_on_array_, &unused, &event_count_on_max, PERCENTAGE_PIXELS_TO_DISCARD);
     minMaxLocRobust(event_count_off_array_, &unused, &event_count_off_max, PERCENTAGE_PIXELS_TO_DISCARD);
@@ -348,10 +355,19 @@ void Complementary_filter::recalibrate_contrast_thresholds(const double& ts)
     {
       for (int col = 0; col < difference_image.cols; col++)
       {
-        const double log_aps_change = difference_image.at<double>(row, col);
-        update_xy_contrast_threshold(row, col, log_aps_change, event_count_on_max, event_count_off_max);
+        if (valid_pixels.at<uint8_t>(row, col))
+        {
+          const double log_aps_change = difference_image.at<double>(row, col);
+          update_xy_contrast_threshold(row, col, log_aps_change, event_count_on_max, event_count_off_max, used_pix);
+        }
       }
     }
+
+    cv_bridge::CvImage cv_image;
+    cv_image.encoding = "mono8";
+    cv_image.header.stamp = timestamp;
+    cv_image.image = used_pix*255;
+    used_for_contrast_threshold_recalibration_pub_.publish(cv_image.toImageMsg());
 
     contrast_threshold_on_adaptive_ = cv::mean(contrast_threshold_on_array_)[0];
     contrast_threshold_off_adaptive_ = cv::mean(contrast_threshold_off_array_)[0];
@@ -369,11 +385,9 @@ void Complementary_filter::recalibrate_contrast_thresholds(const double& ts)
 }
 
 void Complementary_filter::update_xy_contrast_threshold(const uint32_t& row, const uint32_t& col,
-    const double& log_aps_change, const double& event_count_on_max, const double& event_count_off_max)
+    const double& log_aps_change, const double& event_count_on_max, const double& event_count_off_max, cv::Mat& used_pix)
 {
-  // full log intensity APS range [log(1), log(2)]
-  constexpr double LOG_INTENSITY_MIN = std::log(1 + 0.15);
-  constexpr double LOG_INTENSTIY_MAX = std::log(2 - 0.15);
+
   constexpr double LOG_APS_CHANGE_MIN = 0.03; // ~ fraction of total intensity range
   constexpr double DVS_CHANGE_MIN = 2; // number of events
   constexpr double ON_OFF_RATIO_MIN = 2;
@@ -384,35 +398,33 @@ void Complementary_filter::update_xy_contrast_threshold(const uint32_t& row, con
   // the number of iterations required to reach 95% of a constant signal.
   constexpr double BETA = std::pow(1 - 0.95, 1.0 / ITERATIONS_TO_REACH_95_PERCENT);
 
-  if (log_aps_pixel_within_allowed_range(row, col, LOG_INTENSITY_MIN, LOG_INTENSTIY_MAX))
-  {
-    const double event_count_on = event_count_on_array_.at<double>(row, col);
-    const double event_count_off = event_count_off_array_.at<double>(row, col);
-    const double on_off_ratio = (event_count_on + 1e-6) / (event_count_off + 1e-6);
-    const double dvs_change = event_count_on - event_count_off;
+  const double event_count_on = event_count_on_array_.at<double>(row, col);
+  const double event_count_off = event_count_off_array_.at<double>(row, col);
+  const double on_off_ratio = (event_count_on + 1e-6) / (event_count_off + 1e-6);
+  const double dvs_change = event_count_on - event_count_off;
 
-    // positive (ON) change
-    if (log_aps_change >= LOG_APS_CHANGE_MIN
-        && event_count_on < event_count_on_max
-        && dvs_change >= DVS_CHANGE_MIN
-        && on_off_ratio > ON_OFF_RATIO_MIN)
-    {
-      const double measured_contrast_threshold = log_aps_change / dvs_change;
-      contrast_threshold_on_array_.at<double>(row, col) =
-          BETA * contrast_threshold_on_array_.at<double>(row, col) + (1 - BETA) * measured_contrast_threshold;
-//      VLOG(3) << "update";
-    } else if // negative (OFF) change
-        (log_aps_change <= -LOG_APS_CHANGE_MIN
-        && event_count_off < event_count_off_max
-        && dvs_change <= -DVS_CHANGE_MIN
-        && 1.0 / on_off_ratio > OFF_ON_RATIO_MIN)
-    {
-      const double measured_contrast_threshold = -log_aps_change / dvs_change;
-      contrast_threshold_off_array_.at<double>(row, col) =
-          BETA * contrast_threshold_off_array_.at<double>(row, col) + (1 - BETA) * measured_contrast_threshold;
-//      VLOG(3) << "update";
-    }
+  // positive (ON) change
+  if (log_aps_change >= LOG_APS_CHANGE_MIN
+      && event_count_on < event_count_on_max
+      && dvs_change >= DVS_CHANGE_MIN
+      && on_off_ratio > ON_OFF_RATIO_MIN)
+  {
+    const double measured_contrast_threshold = log_aps_change / dvs_change;
+    contrast_threshold_on_array_.at<double>(row, col) =
+        BETA * contrast_threshold_on_array_.at<double>(row, col) + (1 - BETA) * measured_contrast_threshold;
+    used_pix.at<uint8_t>(row, col) = 1;
+  } else if // negative (OFF) change
+      (log_aps_change <= -LOG_APS_CHANGE_MIN
+      && event_count_off < event_count_off_max
+      && dvs_change <= -DVS_CHANGE_MIN
+      && 1.0 / on_off_ratio > OFF_ON_RATIO_MIN)
+  {
+    const double measured_contrast_threshold = -log_aps_change / dvs_change;
+    contrast_threshold_off_array_.at<double>(row, col) =
+        BETA * contrast_threshold_off_array_.at<double>(row, col) + (1 - BETA) * measured_contrast_threshold;
+    used_pix.at<uint8_t>(row, col) = 1;
   }
+
 }
 
 void Complementary_filter::publish_intensity_estimate(const ros::Time& timestamp)
@@ -486,18 +498,6 @@ void Complementary_filter::print_if_negative(const cv::Mat array)
   }
 }
 
-bool Complementary_filter::log_aps_pixel_within_allowed_range
-    (const uint32_t& row, const uint32_t& col, const double& min, const double& max)
-{
-  const bool returnValue = (
-         log_intensity_aps_frame_last_.at<double>(row, col) < max
-      && log_intensity_aps_frame_last_.at<double>(row, col) > min
-      && log_intensity_aps_frame_previous_.at<double>(row, col) < max
-      && log_intensity_aps_frame_previous_.at<double>(row, col) > min);
-
-  return returnValue;
-}
-
 void Complementary_filter::load_images(const sensor_msgs::Image::ConstPtr& msg)
 {
 
@@ -514,7 +514,7 @@ void Complementary_filter::load_images(const sensor_msgs::Image::ConstPtr& msg)
 
   cv_ptr->image.convertTo(image, CV_64FC1, 1 / 255.0, 1);
   images_.push_back(image);
-  image_timestamps_.push_back(msg->header.stamp.toSec());
+  image_timestamps_.push_back(msg->header.stamp);
 
 }
 
