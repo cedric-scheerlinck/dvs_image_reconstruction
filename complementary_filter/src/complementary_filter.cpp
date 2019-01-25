@@ -73,7 +73,9 @@ void Complementary_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& 
 {
   // initialisation only to be performed once at the beginning
   if (!initialised_)
+  {
     initialise_image_states(msg->height, msg->width);
+  }
 
   if (msg->events.size() > 0)
   {
@@ -122,7 +124,9 @@ void Complementary_filter::imageCallback(const sensor_msgs::Image::ConstPtr& msg
 {
   // make sure everything has been initialised
   if (!initialised_)
+  {
     return;
+  }
   cv::Mat last_image;
   cv_bridge::CvImagePtr cv_ptr;
   try
@@ -140,7 +144,9 @@ void Complementary_filter::imageCallback(const sensor_msgs::Image::ConstPtr& msg
   cv::log(last_image, log_intensity_aps_frame_last_);
 
   if (adaptive_contrast_threshold_)
+  {
     recalibrate_contrast_thresholds(msg->header.stamp);
+  }
 
   if (adaptive_cutoff_frequency_)
   {
@@ -175,7 +181,9 @@ void Complementary_filter::offlineEventsCallback(const dvs_msgs::EventArray::Con
         update_log_intensity_state_global(image_ts);
         cv::log(images_[image_idx], log_intensity_aps_frame_last_);
         if (adaptive_contrast_threshold_)
+        {
           recalibrate_contrast_thresholds(image_timestamps_[image_idx]);
+        }
 
         if (adaptive_cutoff_frequency_)
         {
@@ -230,7 +238,8 @@ void Complementary_filter::update_log_intensity_state(const double& ts, const in
   {
     contrast_threshold = (polarity) ? contrast_threshold_on_adaptive_ : contrast_threshold_off_adaptive_;
 //      c = (polarity) ? contrast_threshold_on_array_.at<double>(y, x) : contrast_threshold_off_array_.at<double>(y, x);
-  } else
+  }
+  else
   {
     contrast_threshold = (polarity) ? contrast_threshold_on_user_defined_ : contrast_threshold_off_user_defined_;
   }
@@ -263,7 +272,8 @@ void Complementary_filter::update_log_intensity_state_global(const double& ts)
   if (adaptive_cutoff_frequency_)
   {
     cv::exp(-cutoff_frequency_array_.mul(delta_t), beta);
-  } else
+  }
+  else
   {
     cv::exp(-cutoff_frequency_user_defined_ * (delta_t), beta);
   }
@@ -288,7 +298,9 @@ void Complementary_filter::recalibrate_cutoff_frequency_array()
     for (int col = 0; col < cutoff_frequency_array_.cols; col++)
     {
       if (pixel_compromised.at<uint8_t>(row, col))
+      {
         update_xy_cutoff_frequency(row, col, log_intensity_lower, log_intensity_upper);
+      }
     }
   }
 }
@@ -413,11 +425,11 @@ void Complementary_filter::update_xy_contrast_threshold(const uint32_t& row, con
     contrast_threshold_on_array_.at<double>(row, col) =
         BETA * contrast_threshold_on_array_.at<double>(row, col) + (1 - BETA) * measured_contrast_threshold;
     used_pix.at<uint8_t>(row, col) = 1;
-  } else if // negative (OFF) change
-      (log_aps_change <= -LOG_APS_CHANGE_MIN
-      && event_count_off < event_count_off_max
-      && dvs_change <= -DVS_CHANGE_MIN
-      && 1.0 / on_off_ratio > OFF_ON_RATIO_MIN)
+  }
+  else if (log_aps_change <= -LOG_APS_CHANGE_MIN // negative (OFF) change
+        && event_count_off < event_count_off_max
+        && dvs_change <= -DVS_CHANGE_MIN
+        && 1.0 / on_off_ratio > OFF_ON_RATIO_MIN)
   {
     const double measured_contrast_threshold = -log_aps_change / dvs_change;
     contrast_threshold_off_array_.at<double>(row, col) =
@@ -447,12 +459,14 @@ void Complementary_filter::publish_intensity_estimate(const ros::Time& timestamp
     if (spatial_smoothing_method_ == GAUSSIAN)
     {
       cv::GaussianBlur(display_image, filtered_display_image, cv::Size(5, 5), spatial_filter_sigma_, spatial_filter_sigma_);
-    } else if (spatial_smoothing_method_ == BILATERAL)
+    }
+    else if (spatial_smoothing_method_ == BILATERAL)
     {
       const double bilateral_sigma = spatial_filter_sigma_*20;
       cv::bilateralFilter(display_image, filtered_display_image, 5, bilateral_sigma, bilateral_sigma);
     }
-  } else
+  }
+  else
   {
     filtered_display_image = display_image;
   }

@@ -74,6 +74,7 @@ void High_pass_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
   {
     initialise_image_states(msg->height, msg->width);
   }
+
   if (msg->events.size() > 0)
   {
     // count events per pixels with polarity
@@ -153,7 +154,8 @@ void High_pass_filter::update_log_intensity_state(const double& ts,
   if (adaptive_contrast_threshold_)
   {
     contrast_threshold = (polarity) ? contrast_threshold_on_adaptive_ : contrast_threshold_off_adaptive_;
-  } else
+  }
+  else
   {
     contrast_threshold = (polarity) ? contrast_threshold_on_user_defined_ : contrast_threshold_off_user_defined_;
   }
@@ -197,7 +199,8 @@ void High_pass_filter::update_leaky_event_count(const double& ts, const int& x, 
           * leaky_event_count_on_.at<double>(y, x) + 1;
       ts_array_on_.at<double>(y, x) = ts;
     }
-  } else
+  }
+  else
   {
     // negative OFF event
     const double delta_t = (ts - ts_array_off_.at<double>(y, x));
@@ -251,7 +254,8 @@ void High_pass_filter::publish_intensity_estimate(const ros::Time& timestamp)
     if (spatial_smoothing_method_ == GAUSSIAN)
     {
       cv::GaussianBlur(display_image, filtered_display_image, cv::Size(5, 5), spatial_filter_sigma_, spatial_filter_sigma_);
-    } else if (spatial_smoothing_method_ == BILATERAL)
+    }
+    else if (spatial_smoothing_method_ == BILATERAL)
     {
       const double bilateral_sigma = spatial_filter_sigma_*25;
       cv::bilateralFilter(display_image, filtered_display_image, 5, bilateral_sigma, bilateral_sigma);
@@ -312,7 +316,8 @@ void High_pass_filter::convert_log_intensity_state_to_display_image(cv::Mat& ima
 
       intensity_upper_bound = std::max(beta*intensity_upper_bound + (1 - beta)
           * (robust_max + EXTEND_RANGE), MIN_INTENSITY_UPPER_BOUND);
-    } else
+    }
+    else
     {
       intensity_lower_bound = beta*intensity_lower_bound + (1 - beta)*intensity_min_user_defined_;
       intensity_upper_bound = beta*intensity_upper_bound + (1 - beta)*intensity_max_user_defined_;
