@@ -61,3 +61,6 @@ The webpage for this project with links to data, slides, paper and more can be f
 
 [https://cedric-scheerlinck.github.io/continuous-time-intensity-estimation](https://cedric-scheerlinck.github.io/continuous-time-intensity-estimation)
 
+## Acknowledgements
+
+This research was funded by an Australian Government Research Training Program Scholarship (AGRTP) and the Autralian Research Council through the Australian Centre of Excellence for Robotic Vision (ACRV) CE140100016.
