@@ -10,7 +10,6 @@ namespace pure_event_reconstruction
 
 High_pass_filter::High_pass_filter(ros::NodeHandle & nh, ros::NodeHandle nh_private)
 {
-  constexpr int EVENT_SUB_QUEUE_SIZE = 1000;
   constexpr int INTENSITY_ESTIMATE_PUB_QUEUE_SIZE = 1;
   constexpr double EVENT_RETENTION_DURATION = 30;  // seconds. Used for calibrating contrast thresholds.
 
@@ -39,9 +38,7 @@ High_pass_filter::High_pass_filter(ros::NodeHandle & nh, ros::NodeHandle nh_priv
     VLOG(1) << "Saving images to " << save_dir_ ;
   }
 
-  // setup subscribers and publishers
-  event_sub_ = nh_.subscribe("events", EVENT_SUB_QUEUE_SIZE, &High_pass_filter::eventsCallback, this);
-
+  // setup publishers
   image_transport::ImageTransport it_(nh_);
   intensity_estimate_pub_ = it_.advertise("pure_event_reconstruction/intensity_estimate", INTENSITY_ESTIMATE_PUB_QUEUE_SIZE);
 

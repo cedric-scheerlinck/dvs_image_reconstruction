@@ -1,8 +1,12 @@
+#include <dvs_msgs/EventArray.h>
+#include <glog/logging.h>
+#include <ros/ros.h>
+#include <rosbag/message_instance.h>
+#include <string>
+
 #include "pure_event_reconstruction/bag_player.h"
 #include "pure_event_reconstruction/pure_event_reconstruction.h"
 #include "pure_event_reconstruction/utils.h"
-#include <rosbag/bag.h>
-#include <rosbag/view.h>
 
 int main(int argc, char* argv[])
 {
@@ -28,6 +32,12 @@ int main(int argc, char* argv[])
   if (realtime)
   {
     VLOG(1) << "Running in real-time mode";
+    // subscriber queue size
+    constexpr int EVENT_SUB_QUEUE_SIZE = 1000;
+    ros::Subscriber event_sub = nh.subscribe(
+        "events", EVENT_SUB_QUEUE_SIZE, &pure_event_reconstruction::High_pass_filter::eventsCallback,
+        &high_pass_filter);
+
     ros::spin();
   }
   else if (!realtime)

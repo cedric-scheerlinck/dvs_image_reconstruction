@@ -48,9 +48,6 @@ private:
   boost::shared_ptr<dynamic_reconfigure::Server<complementary_filter::complementary_filterConfig> > server_;
   dynamic_reconfigure::Server<complementary_filter::complementary_filterConfig>::CallbackType dynamic_reconfigure_callback_;
 
-  ros::Subscriber event_sub_;
-
-  image_transport::Subscriber image_raw_sub_;
   image_transport::Publisher intensity_estimate_pub_;
   image_transport::Publisher cutoff_frequency_array_pub_;
 
@@ -86,7 +83,6 @@ private:
   double t_next_publish_;
   double publish_framerate_;
   double contrast_threshold_recalibration_frequency_;
-//  double dynamic_range_extension_;
   double intensity_min_;
   double intensity_max_;
   double spatial_filter_sigma_;

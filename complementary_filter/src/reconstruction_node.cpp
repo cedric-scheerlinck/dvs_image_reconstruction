@@ -33,6 +33,19 @@ int main(int argc, char* argv[])
   if (realtime)
   {
     VLOG(1) << "Running in real-time mode";
+
+    // subscriber queue size
+     constexpr int EVENT_SUB_QUEUE_SIZE = 1000;
+     constexpr int IMAGE_SUB_QUEUE_SIZE = 100;
+
+    ros::Subscriber event_sub = nh.subscribe(
+        "events", EVENT_SUB_QUEUE_SIZE, &complementary_filter::Complementary_filter::eventsCallback,
+        &complementary_filter);
+    image_transport::ImageTransport it(nh);
+    image_transport::Subscriber image_raw_sub = it.subscribe(
+        "image_raw", IMAGE_SUB_QUEUE_SIZE, &complementary_filter::Complementary_filter::imageCallback,
+        &complementary_filter);
+
     ros::spin();
   }
   else if (!realtime)
@@ -44,14 +57,15 @@ int main(int argc, char* argv[])
 
     VLOG(1) << "Path to rosbag: " << bag_path;
 
+    // if you want to specify the exact topic you want to read from, replace these lines
     std::string event_topic_name = complementary_filter::utils::find_topic_by_type(bag_path, "dvs_msgs/EventArray");
     std::string image_topic_name = complementary_filter::utils::find_topic_by_type(bag_path, "sensor_msgs/Image");
 
     VLOG(1) << "Reading events from: " << event_topic_name;
     VLOG(1) << "Reading images from: " << image_topic_name;
 
-    // put all images and timestamps into vectors
 
+    // put all images and timestamps into vectors
     VLOG(1) << "Loading images...";
 
     rpg_common_ros::BagPlayer image_player(bag_path);
@@ -63,7 +77,7 @@ int main(int argc, char* argv[])
           complementary_filter.load_images(image);
         }
     );
-
+    // go through the whole bag once just to load images into vectors
     image_player.play();
     VLOG(1) << "...done!";
 
@@ -79,6 +93,7 @@ int main(int argc, char* argv[])
     );
 
     VLOG(1) << "Playing bag...";
+    // all the work is done here
     player.play();
     VLOG(1) << "...done!";
 

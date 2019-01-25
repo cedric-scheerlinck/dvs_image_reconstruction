@@ -14,9 +14,7 @@ namespace complementary_filter
 
 Complementary_filter::Complementary_filter(ros::NodeHandle & nh, ros::NodeHandle nh_private)
 {
-  // subscriber queue size
-  const int EVENT_SUB_QUEUE_SIZE = 1000;
-  const int IMAGE_SUB_QUEUE_SIZE = 100;
+
   // publisher queue size
   const int INTENSITY_ESTIMATE_PUB_QUEUE_SIZE = 1;
   const int CUTOFF_FREQUENCY_PUB_QUEUE_SIZE = 1;
@@ -51,10 +49,8 @@ Complementary_filter::Complementary_filter(ros::NodeHandle & nh, ros::NodeHandle
   VLOG(1) << "Found parameter publish_framerate " << publish_framerate_;
   VLOG(1) << "Found parameter contrast_threshold_recalibration_frequency " << contrast_threshold_recalibration_frequency_;
 
-  // setup subscribers and publishers
-  event_sub_ = nh_.subscribe("events", EVENT_SUB_QUEUE_SIZE, &Complementary_filter::eventsCallback, this);
+  // setup publishers
   image_transport::ImageTransport it_(nh_);
-  image_raw_sub_ = it_.subscribe("image_raw", IMAGE_SUB_QUEUE_SIZE, &Complementary_filter::imageCallback, this);
   intensity_estimate_pub_ = it_.advertise("complementary_filter/intensity_estimate", INTENSITY_ESTIMATE_PUB_QUEUE_SIZE);
   cutoff_frequency_array_pub_ = it_.advertise("complementary_filter/cutoff_frequency", CUTOFF_FREQUENCY_PUB_QUEUE_SIZE);
 
@@ -71,6 +67,7 @@ Complementary_filter::Complementary_filter(ros::NodeHandle & nh, ros::NodeHandle
 Complementary_filter::~Complementary_filter()
 {
   intensity_estimate_pub_.shutdown();
+  cutoff_frequency_array_pub_.shutdown();
 }
 
 void Complementary_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)

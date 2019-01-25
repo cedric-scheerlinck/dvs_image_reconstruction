@@ -62,8 +62,7 @@ private:
   boost::shared_ptr<dynamic_reconfigure::Server<pure_event_reconstruction::pure_event_reconstructionConfig> > server_;
   dynamic_reconfigure::Server<pure_event_reconstruction::pure_event_reconstructionConfig>::CallbackType dynamic_reconfigure_callback_;
 
-  // subscribers and publishers
-  ros::Subscriber event_sub_;
+  // publishers
   image_transport::Publisher intensity_estimate_pub_;
 
   // internal image states
