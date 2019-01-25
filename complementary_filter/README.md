@@ -32,7 +32,7 @@ In another terminal launch the package:
     
 where bag_path:=, save_dir:=, and publish_framerate:= are optional command-line arguments.
 To pre-set [dynamic reconfigure parameters](#reconfigure), first launch the package without specifying bag_path:= and modify (or load) parameters, then (without closing roscore) close and re-launch the package with bag_path:=.
-You can save and load reconfigure parameters to and from .yaml files using [rqt_reconfigure](http://wiki.ros.org/rqt_reconfigure).
+You can [save and load](#reconfigure) reconfigure parameters to and from .yaml files using [rqt_reconfigure](http://wiki.ros.org/rqt_reconfigure).
 
 E.g.
 
