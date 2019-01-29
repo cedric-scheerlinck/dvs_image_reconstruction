@@ -40,6 +40,8 @@ E.g.
 
 
 #### Old way
+Note: event messages are timestamped by the timestamp of the last event. Thus, events and frames may be processed slightly out of order. To ensure correct ordering please use [offline mode](#new-offline-mode-recommended).
+
 Open a terminal launch roscore:
 
     roscore
