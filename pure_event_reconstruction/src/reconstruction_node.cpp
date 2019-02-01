@@ -3,7 +3,8 @@
 #include <glog/logging.h>
 #include <ros/ros.h>
 #include <rosbag/message_instance.h>
-#include <string>
+//#include <string>
+#include <ctime>
 
 #include "pure_event_reconstruction/bag_player.h"
 #include "pure_event_reconstruction/pure_event_reconstruction.h"
@@ -65,7 +66,20 @@ int main(int argc, char* argv[])
         }
     );
 
+//    std::clock_t start;
+//    double duration;
+//
+//    start = std::clock();
+
+
     player.play();
+
+
+//
+//    duration = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;
+//
+//    std::cout<< "printf: " << duration <<'\n';
+
     VLOG(1) << "...done!";
 
   }

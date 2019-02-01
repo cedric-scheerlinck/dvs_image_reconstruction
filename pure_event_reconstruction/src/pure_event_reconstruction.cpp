@@ -54,7 +54,7 @@ High_pass_filter::High_pass_filter(ros::NodeHandle & nh, ros::NodeHandle nh_priv
   t_next_publish_ = 0.0;
   t_next_recalibrate_contrast_thresholds_ = 0.0;
   t_next_log_intensity_update_ = 0.0;
-
+//  event_count_total_ = 0.0;
 
   // dynamic reconfigure
   dynamic_reconfigure_callback_ = boost::bind(&High_pass_filter::reconfigureCallback, this, _1, _2);
@@ -92,6 +92,8 @@ void High_pass_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
           update_leaky_event_count(ts, x, y, polarity);
         }
 
+//        event_count_total_++;
+
         update_log_intensity_state(ts, x, y, polarity);
 
         if (publish_framerate_ > 0 && ts > t_next_publish_)
@@ -118,6 +120,8 @@ void High_pass_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
       publish_intensity_estimate(msg->events.back().ts);
     }
   }
+
+//  LOG_EVERY_N(INFO, 100) << event_count_total_;
 }
 
 void High_pass_filter::initialise_image_states(const uint32_t& rows, const uint32_t& columns)

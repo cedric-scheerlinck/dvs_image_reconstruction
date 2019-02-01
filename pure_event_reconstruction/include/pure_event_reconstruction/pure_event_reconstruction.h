@@ -105,6 +105,7 @@ private:
   double intensity_max_user_defined_;
   double spatial_filter_sigma_;
 
+//  double event_count_total_;
 
 };
 
