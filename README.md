@@ -6,7 +6,7 @@ This repository contains **(1) Complementary filter** (combines events and frame
 ![filter_pic](images/filter.png)
 
 This package was developed using ROS version [Kinetic](http://wiki.ros.org/kinetic) (Ubuntu 16.04).
-It can be run in real-time using **(1) live [DVS](https://inivation.com/dvs/)** ([RPG Event Camera Driver](https://github.com/uzh-rpg/rpg_dvs_ros)), or **(2) pre-recorded rosbag** ([data](https://drive.google.com/drive/folders/1Jv73p1-Hi56HXyal4SHQbzs2zywISOvc?usp=sharing)).
+It can be run in real-time using **(1) live [DVS](https://inivation.com/dvs/)** ([RPG Event Camera Driver](https://github.com/uzh-rpg/rpg_dvs_ros)), or **(2) pre-recorded rosbag** ([data](https://drive.google.com/drive/folders/1Jv73p1-Hi56HXyal4SHQbzs2zywISOvc?usp=sharing)). Got a noisy rosbag? Try the [hot pixel filter](https://github.com/cedric-scheerlinck/dvs_hot_pixel_filter).
 
 The source code is released under the **MIT License**.
 
