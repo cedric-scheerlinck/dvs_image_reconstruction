@@ -31,6 +31,7 @@ In another terminal launch the package:
     roslaunch complementary_filter from_rosbag.launch bag_path:=<path/to/input/rosbag.bag> save_dir:=<directory/to/save/images/> publish_framerate:=<framerate>
     
 where bag_path:=, save_dir:=, and publish_framerate:= are optional command-line arguments.
+If publish_framerate < 0, it will publish an image for every event packet message.
 To pre-set [dynamic reconfigure parameters](#reconfigure), first launch the package without specifying bag_path:= and modify (or load) parameters, then (without closing roscore) close and re-launch the package with bag_path:=.
 You can [save and load](#reconfigure) reconfigure parameters to and from .yaml files using [rqt_reconfigure](http://wiki.ros.org/rqt_reconfigure).
 
@@ -54,6 +55,19 @@ In another terminal launch the complementary filter:
     
     roslaunch complementary_filter from_rosbag.launch
     
+    
+## Using reconstructed frames from another method as low-frequency input to the complementary filter
+
+First store the reconstructed images in a rosbag with the events.
+
+In [launch/from_rosbag.launch](launch/from_rosbag.launch) modify (line 17):
+
+        <remap from="image_raw" to="dvs/image_raw" />
+        
+to
+
+        <remap from="image_raw" to="your_reconstruction_topic" />
+
 ## Reconfigure
 
 ![gui_picture](images/reconfigure.png)
