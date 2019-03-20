@@ -78,6 +78,7 @@ private:
   bool adaptive_contrast_threshold_;
   bool adaptive_dynamic_range_;
   bool save_images_;
+  bool color_image_;
 
   std::string save_dir_;
 

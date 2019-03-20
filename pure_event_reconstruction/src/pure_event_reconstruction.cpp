@@ -248,13 +248,13 @@ void High_pass_filter::recalibrate_contrast_thresholds(const double& ts)
 void High_pass_filter::publish_intensity_estimate(const ros::Time& timestamp)
 {
   cv::Mat display_image;
-  cv::Mat filtered_display_image;
   cv_bridge::CvImage cv_image;
 
   convert_log_intensity_state_to_display_image(display_image, timestamp.toSec());
 
   if (spatial_filter_sigma_ > 0)
   {
+    cv::Mat filtered_display_image;
     if (spatial_smoothing_method_ == GAUSSIAN)
     {
       cv::GaussianBlur(display_image, filtered_display_image, cv::Size(5, 5), spatial_filter_sigma_, spatial_filter_sigma_);
@@ -267,9 +267,20 @@ void High_pass_filter::publish_intensity_estimate(const ros::Time& timestamp)
     display_image = filtered_display_image; // data is not copied
   }
 
-  cv_image.encoding = "mono8";
-  cv_image.header.stamp = timestamp;
+  if (color_image_)
+  {
+    cv::Mat color_display_image;
+    cv::cvtColor(display_image, color_display_image, CV_BayerBG2BGR);
+    display_image = color_display_image;
+    cv_image.encoding = "bgr8";
+  }
+  else
+  {
+    cv_image.encoding = "mono8";
+  }
+
   cv_image.image = display_image;
+  cv_image.header.stamp = timestamp;
   intensity_estimate_pub_.publish(cv_image.toImageMsg());
 
   if (save_images_)
@@ -361,6 +372,7 @@ void High_pass_filter::reconfigureCallback(pure_event_reconstruction::pure_event
   spatial_filter_sigma_ = config.Spatial_filter_sigma;
   spatial_smoothing_method_ = int(config.Bilateral_filter);
   adaptive_dynamic_range_ = config.Auto_adjust_dynamic_range;
+  color_image_ = config.Color_display;
 }
 
 } // namespace
