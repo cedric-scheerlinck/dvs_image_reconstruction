@@ -70,6 +70,7 @@ private:
   bool adaptive_cutoff_frequency_;
   bool save_images_;
   bool recalibrate_contrast_thresholds_initialised_;
+  bool color_image_;
 
   std::string save_dir_;
 

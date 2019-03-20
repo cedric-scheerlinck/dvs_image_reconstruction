@@ -141,7 +141,10 @@ void Complementary_filter::imageCallback(const sensor_msgs::Image::ConstPtr& msg
   cv_ptr->image.convertTo(last_image, CV_64FC1, 1 / 255.0, 1);
 
   // put logarithm of APS frame into class member variable
-  cv::log(last_image, log_intensity_aps_frame_last_);
+  if (last_image.size() == log_intensity_aps_frame_last_.size())
+  {
+    cv::log(last_image, log_intensity_aps_frame_last_);
+  }
 
   if (adaptive_contrast_threshold_)
   {
@@ -441,21 +444,18 @@ void Complementary_filter::update_xy_contrast_threshold(const uint32_t& row, con
 
 void Complementary_filter::publish_intensity_estimate(const ros::Time& timestamp)
 {
+  const double display_range = intensity_max_ - intensity_min_;
   cv::Mat display_image;
+  cv_bridge::CvImage cv_image;
 
   cv::exp(log_intensity_state_, display_image); //[1, 2]
-
   display_image -= 1; // [0, 1]
-
   display_image -= intensity_min_;
-
-  const double display_range = intensity_max_ - intensity_min_;
-
   display_image.convertTo(display_image, CV_8UC1, 255.0/display_range);
 
-  cv::Mat filtered_display_image;
   if (spatial_filter_sigma_ > 0)
   {
+    cv::Mat filtered_display_image;
     if (spatial_smoothing_method_ == GAUSSIAN)
     {
       cv::GaussianBlur(display_image, filtered_display_image, cv::Size(5, 5), spatial_filter_sigma_, spatial_filter_sigma_);
@@ -465,16 +465,23 @@ void Complementary_filter::publish_intensity_estimate(const ros::Time& timestamp
       const double bilateral_sigma = spatial_filter_sigma_*20;
       cv::bilateralFilter(display_image, filtered_display_image, 5, bilateral_sigma, bilateral_sigma);
     }
+    display_image = filtered_display_image;
+  }
+
+  if (color_image_)
+  {
+    cv::Mat color_display_image;
+    cv::cvtColor(display_image, color_display_image, CV_BayerBG2BGR);
+    display_image = color_display_image;
+    cv_image.encoding = "bgr8";
   }
   else
   {
-    filtered_display_image = display_image;
+    cv_image.encoding = "mono8";
   }
 
-  cv_bridge::CvImage cv_image;
-  cv_image.encoding = "mono8";
+  cv_image.image = display_image;
   cv_image.header.stamp = timestamp;
-  cv_image.image = filtered_display_image;
   intensity_estimate_pub_.publish(cv_image.toImageMsg());
 
   if (save_images_)
@@ -560,6 +567,7 @@ void Complementary_filter::reconfigureCallback
   adaptive_cutoff_frequency_ = config.High_dynamic_range_mode;
   spatial_filter_sigma_ = config.Spatial_filter_sigma;
   spatial_smoothing_method_ = int(config.Bilateral_filter);
+  color_image_ = config.Color_display;
 }
 
 } // namespace
