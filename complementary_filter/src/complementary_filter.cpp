@@ -182,7 +182,10 @@ void Complementary_filter::offlineEventsCallback(const dvs_msgs::EventArray::Con
         events.clear();
         // update and set new image
         update_log_intensity_state_global(image_ts);
-        cv::log(images_[image_idx], log_intensity_aps_frame_last_);
+        if (images_[image_idx].size() == log_intensity_aps_frame_last_.size())
+        {
+          cv::log(images_[image_idx], log_intensity_aps_frame_last_);
+        }
         if (adaptive_contrast_threshold_)
         {
           recalibrate_contrast_thresholds(image_timestamps_[image_idx]);
