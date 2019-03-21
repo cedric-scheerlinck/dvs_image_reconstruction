@@ -252,6 +252,18 @@ void High_pass_filter::publish_intensity_estimate(const ros::Time& timestamp)
 
   convert_log_intensity_state_to_display_image(display_image, timestamp.toSec());
 
+  if (color_image_)
+  {
+    cv::Mat color_display_image;
+    cv::cvtColor(display_image, color_display_image, CV_BayerBG2BGR);
+    display_image = color_display_image;
+    cv_image.encoding = "bgr8";
+  }
+  else
+  {
+    cv_image.encoding = "mono8";
+  }
+
   if (spatial_filter_sigma_ > 0)
   {
     cv::Mat filtered_display_image;
@@ -265,18 +277,6 @@ void High_pass_filter::publish_intensity_estimate(const ros::Time& timestamp)
       cv::bilateralFilter(display_image, filtered_display_image, 5, bilateral_sigma, bilateral_sigma);
     }
     display_image = filtered_display_image; // data is not copied
-  }
-
-  if (color_image_)
-  {
-    cv::Mat color_display_image;
-    cv::cvtColor(display_image, color_display_image, CV_BayerBG2BGR);
-    display_image = color_display_image;
-    cv_image.encoding = "bgr8";
-  }
-  else
-  {
-    cv_image.encoding = "mono8";
   }
 
   cv_image.image = display_image;

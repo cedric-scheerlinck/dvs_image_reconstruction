@@ -456,6 +456,18 @@ void Complementary_filter::publish_intensity_estimate(const ros::Time& timestamp
   display_image -= intensity_min_;
   display_image.convertTo(display_image, CV_8UC1, 255.0/display_range);
 
+  if (color_image_)
+  {
+    cv::Mat color_display_image;
+    cv::cvtColor(display_image, color_display_image, CV_BayerBG2BGR);
+    display_image = color_display_image;
+    cv_image.encoding = "bgr8";
+  }
+  else
+  {
+    cv_image.encoding = "mono8";
+  }
+
   if (spatial_filter_sigma_ > 0)
   {
     cv::Mat filtered_display_image;
@@ -469,18 +481,6 @@ void Complementary_filter::publish_intensity_estimate(const ros::Time& timestamp
       cv::bilateralFilter(display_image, filtered_display_image, 5, bilateral_sigma, bilateral_sigma);
     }
     display_image = filtered_display_image;
-  }
-
-  if (color_image_)
-  {
-    cv::Mat color_display_image;
-    cv::cvtColor(display_image, color_display_image, CV_BayerBG2BGR);
-    display_image = color_display_image;
-    cv_image.encoding = "bgr8";
-  }
-  else
-  {
-    cv_image.encoding = "mono8";
   }
 
   cv_image.image = display_image;
