@@ -1,3 +1,4 @@
 *.launch
 !davis_mono.launch
+!davis_color.launch
 !from_rosbag.launch

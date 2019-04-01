@@ -1,0 +1,24 @@
+<launch>
+
+  <!-- camera driver -->
+  <node name="davis_ros_driver" pkg="davis_ros_driver" type="davis_ros_driver" />
+  
+  <!-- pure event reconstruction -->
+  <node name="reconstruction_node" pkg="pure_event_reconstruction" type="reconstruction_node" output="screen" args="--v=3">
+    <param name="bag_path" type="str" value=""/> <!-- this parameter enables "realtime" mode when it is empty string -->
+    <param name="publish_framerate" type="double" value="60.0"/>
+    <param name="global_log_intensity_state_update_frequency" type="double" value="30.0"/>
+    <param name="Color_display" type="bool" value="true"/>
+    
+    <remap from="events" to="dvs/events" />
+  </node>
+  
+  <!-- display -->
+  <node name="image_view" pkg="image_view" type="image_view">
+    <remap from="image" to="pure_event_reconstruction/intensity_estimate"/>
+  </node>
+  
+  <!-- configure -->
+  <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" />
+
+</launch>
