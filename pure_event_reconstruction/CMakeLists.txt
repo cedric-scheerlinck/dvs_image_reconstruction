@@ -17,6 +17,9 @@ cs_add_library(${PROJECT_NAME} src/pure_event_reconstruction.cpp
 # link required libraries
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES})
 
+# link required libraries
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES})
+
 # make the executable
 cs_add_executable(reconstruction_node src/reconstruction_node.cpp)
 

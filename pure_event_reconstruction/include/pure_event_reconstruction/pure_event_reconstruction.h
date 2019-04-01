@@ -68,6 +68,7 @@ private:
   cv::Mat log_intensity_state_;
   cv::Mat leaky_event_count_on_; // used to calibrate contrast threshold
   cv::Mat leaky_event_count_off_;
+  cv::Mat bias_state_;
 
   // last update time-stamp map (similar to surface of active events)
   cv::Mat ts_array_; // for log_intensity_state_
