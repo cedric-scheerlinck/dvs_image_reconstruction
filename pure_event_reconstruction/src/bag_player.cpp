@@ -36,4 +36,9 @@ void BagPlayer::play()
   }
 }
 
+void BagPlayer::closeBag()
+{
+  bag_.close();
+}
+
 }  // namespace rpg_common_ros

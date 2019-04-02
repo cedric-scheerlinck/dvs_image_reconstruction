@@ -43,26 +43,48 @@ public:
 
 private:
   ros::NodeHandle nh_;
-
   void reconfigureCallback(pure_event_reconstruction::pure_event_reconstructionConfig &config, uint32_t level);
-
   void initialise_image_states(const uint32_t& rows, const uint32_t& columns);
-  void update_log_intensity_state(const double& ts, const int& x,
-                                                            const int& y, const bool& polarity);
-  void update_log_intensity_state_global(const double& ts);
-  void update_leaky_event_count(const double& ts, const int& x, const int& y, const bool& polarity);
+  void process_event_msg(const dvs_msgs::EventArray::ConstPtr& msg);
+
+  void update_state_local(const double& delta_t,
+                          const int& x,
+                          const int& y,
+                          const bool& polarity);
+  void update_state_global(cv::Mat& delta_t_array);
+
+
+  void update_log_intensity_state(const double& delta_t,
+                                  const int& x,
+                                  const int& y,
+                                  const bool& polarity);
+  void update_log_intensity_state_global(cv::Mat& delta_t_array);
+  void update_bias_state(const double& delta_t,
+                         const int& x,
+                         const int& y);
+  void update_bias_state_global(cv::Mat& delta_t_array);
+  void update_leaky_event_count(const double& ts,
+                                const int& x,
+                                const int& y,
+                                const bool& polarity);
   void recalibrate_contrast_thresholds(const double& ts);
   void publish_intensity_estimate(const ros::Time& ts);
+  void publish_bias_state(const ros::Time& ts);
   void convert_log_intensity_state_to_display_image(cv::Mat& display_image, const double& ts);
-  void minMaxLocRobust(const cv::Mat& image, double* lower_bound, double* upper_bound,
-                                          const double& percentage_pixels_to_discard);
+  void minMaxLocRobust(const cv::Mat& image,
+                       double* lower_bound,
+                       double* upper_bound,
+                       const double& percentage_pixels_to_discard);
 
   // dynamic reconfigure
-  boost::shared_ptr<dynamic_reconfigure::Server<pure_event_reconstruction::pure_event_reconstructionConfig> > server_;
-  dynamic_reconfigure::Server<pure_event_reconstruction::pure_event_reconstructionConfig>::CallbackType dynamic_reconfigure_callback_;
+  boost::shared_ptr<dynamic_reconfigure::Server<pure_event_reconstruction::pure_event_reconstructionConfig>>
+  server_;
+  dynamic_reconfigure::Server<pure_event_reconstruction::pure_event_reconstructionConfig>::CallbackType
+  dynamic_reconfigure_callback_;
 
   // publishers
   image_transport::Publisher intensity_estimate_pub_;
+  image_transport::Publisher bias_pub_;
 
   // internal image states
   cv::Mat log_intensity_state_;
@@ -80,6 +102,7 @@ private:
   bool adaptive_dynamic_range_;
   bool save_images_;
   bool color_image_;
+  bool second_order_;
 
   std::string save_dir_;
 
@@ -89,6 +112,7 @@ private:
   double cutoff_frequency_global_; /** rad/s */
   double cutoff_frequency_per_event_component_;
   double event_count_cutoff_frequency_;
+  double cutoff_frequency_bias_;
 
   // contrast thresholds
   double contrast_threshold_on_user_defined_;

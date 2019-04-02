@@ -19,6 +19,7 @@ public:
           const rosbag::MessageInstance&)>& callback);
 
   void play();
+  void closeBag();
 
 private:
   rosbag::Bag bag_;
@@ -27,6 +28,8 @@ private:
       std::function<void(const rosbag::MessageInstance&)>> CallBackMap;
   CallBackMap subscriptions_;
 };
+
+
 
 }  // namespace rpg_common_ros
 namespace rpg_ros = rpg_common_ros;
