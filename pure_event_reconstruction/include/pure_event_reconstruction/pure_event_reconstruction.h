@@ -51,38 +51,44 @@ private:
                           const int& x,
                           const int& y,
                           const bool& polarity);
+  void update_state_global(cv::Mat& delta_t_array);
+
   void update_state_local_cedric(const double& delta_t,
                                  const int& x,
                                  const int& y,
                                  const bool& polarity);
   void update_state_global_cedric(cv::Mat& delta_t_array);
+  void undiagonalise(double D[], double result[]);
+  void undiagonalise_mat(cv::Mat D[], cv::Mat result[]);
+
   void matmul2by2(double a[],
                   double b[],
                   double result[]);
-  void update_state_global(cv::Mat& delta_t_array);
-
+  void matmul2by2_array(cv::Mat a[], cv::Mat b[], cv::Mat result[]);
 
   void update_log_intensity_state(const double& delta_t,
                                   const int& x,
                                   const int& y,
                                   const bool& polarity);
   void update_log_intensity_state_global(cv::Mat& delta_t_array);
+
   void update_bias_state(const double& delta_t,
                          const int& x,
                          const int& y);
   void update_bias_state_global(cv::Mat& delta_t_array);
+
   void update_leaky_event_count(const double& ts,
                                 const int& x,
                                 const int& y,
                                 const bool& polarity);
+
   void recalibrate_contrast_thresholds(const double& ts);
   void publish_intensity_estimate(const ros::Time& ts);
   void publish_bias_state(const ros::Time& ts);
   void convert_log_intensity_state_to_display_image(cv::Mat& display_image, const double& ts);
   void minMaxLocRobust(const cv::Mat& image,
-                       double* lower_bound,
-                       double* upper_bound,
-                       const double& percentage_pixels_to_discard);
+                       double& lower_bound,
+                       double& upper_bound);
 
   // dynamic reconfigure
   boost::shared_ptr<dynamic_reconfigure::Server<pure_event_reconstruction::pure_event_reconstructionConfig>>
@@ -93,6 +99,7 @@ private:
   // publishers
   image_transport::Publisher intensity_estimate_pub_;
   image_transport::Publisher bias_pub_;
+  image_transport::Publisher second_order_pub_;
 
   // internal image states
   cv::Mat log_intensity_state_;
@@ -145,6 +152,8 @@ private:
   double D_[2] = {0, 0};  // 2x2 diagonal matrix D_11 = D_[0], D_22 = D_[1] (D_12, D_21 = 0)
   double U_[4] = {1, 1, 1, 1};  // column-major
   double U_inv_[4] = {0, 0, 0, 0};  // inverse
+
+
 
 };
 

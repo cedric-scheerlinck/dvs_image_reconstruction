@@ -45,7 +45,7 @@ High_pass_filter::High_pass_filter(ros::NodeHandle & nh, ros::NodeHandle nh_priv
   image_transport::ImageTransport it_(nh_);
   intensity_estimate_pub_ = it_.advertise("pure_event_reconstruction/intensity_estimate", INTENSITY_ESTIMATE_PUB_QUEUE_SIZE);
   bias_pub_ = it_.advertise("pure_event_reconstruction/bias", INTENSITY_ESTIMATE_PUB_QUEUE_SIZE);
-
+  second_order_pub_ = it_.advertise("pure_event_reconstruction/second_order", INTENSITY_ESTIMATE_PUB_QUEUE_SIZE);
   // flags and counters
   initialised_ = false;
 
@@ -70,7 +70,7 @@ High_pass_filter::~High_pass_filter()
 {
   intensity_estimate_pub_.shutdown();
   bias_pub_.shutdown();
-
+  second_order_pub_.shutdown();
 }
 
 void High_pass_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
@@ -96,10 +96,11 @@ void High_pass_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
 //
 //    if (publish_framerate_ < 0)
     {
-//      cv::Mat delta_t_array;
-//      delta_t_array = ts - ts_array_;
+      cv::Mat delta_t_array;
+      delta_t_array = ts - ts_array_;
 //      update_bias_state_global(delta_t_array);
 //      update_log_intensity_state_global(delta_t_array);
+      update_state_global_cedric(delta_t_array);
       publish_intensity_estimate(msg->events.back().ts);
       publish_bias_state(msg->events.back().ts);
       ts_array_.setTo(ts);
@@ -144,6 +145,7 @@ void High_pass_filter::process_event_msg(const dvs_msgs::EventArray::ConstPtr& m
 //      update_log_intensity_state(delta_t, x, y, polarity);
 //      update_state_local(delta_t, x, y, polarity);
       update_state_local_cedric(delta_t, x, y, polarity);
+//      publish_intensity_estimate(msg->events.back().ts);
 
       ts_array_.at<double>(y, x) = ts; // reset timestamp map at pixel
 
@@ -173,7 +175,6 @@ void High_pass_filter::process_event_msg(const dvs_msgs::EventArray::ConstPtr& m
   }
 }
 
-
 void High_pass_filter::initialise_image_states(const uint32_t& rows, const uint32_t& columns)
 {
   log_intensity_state_ = cv::Mat::zeros(rows, columns, CV_64FC1);
@@ -199,18 +200,15 @@ void High_pass_filter::update_state_local_cedric(const double& delta_t,
                                                  const bool& polarity)
 {
   // compute exp(D*delta_t)
-  const double exp_D_11 = exp(D_[0]*delta_t);
-  const double exp_D_22 = exp(D_[1]*delta_t);
-  double exp_A[4];
-  double stage1[4];
-  // compute UDU' in two stages.
-  // stage 1 UD
-  stage1[0] = U_[0]*exp_D_11;
-  stage1[1] = U_[1]*exp_D_11;
-  stage1[2] = U_[2]*exp_D_22;
-  stage1[3] = U_[3]*exp_D_22;
-  // stage 2 (UD)U'
-  matmul2by2(stage1, U_inv_, exp_A);
+  double exp_D[2];  // diagonal 2x2 matrix
+  double exp_A[4];  // column-major
+
+  exp_D[0] = exp(D_[0]*delta_t);
+  exp_D[1] = exp(D_[1]*delta_t);
+
+  undiagonalise(exp_D, exp_A);  // undiagonalise based on U_ and U_inv, i.e. compute A = UDU'.
+
+//  matmul2by2(stage1, U_inv_, exp_A);
 
   double log_i_state = exp_A[0] * log_intensity_state_.at<double>(y, x)
                        + exp_A[2] * bias_state_.at<double>(y, x);
@@ -224,58 +222,72 @@ void High_pass_filter::update_state_local_cedric(const double& delta_t,
   log_intensity_state_.at<double>(y, x) = log_i_state + contrast_threshold;
 }
 
+void High_pass_filter::undiagonalise(double D[], double result[])
+{
+  // compute UDU' in two stages.
+  // stage 1 UD
+  // column-major
+  double UD[4];
+  UD[0] = U_[0]*D[0];
+  UD[1] = U_[1]*D[0];
+  UD[2] = U_[2]*D[1];
+  UD[3] = U_[3]*D[1];
+  // stage 2 (UD)U'
+  result[0] = UD[0]*U_inv_[0] + UD[2]*U_inv_[1];
+  result[1] = UD[1]*U_inv_[0] + UD[3]*U_inv_[1];
+  result[2] = UD[0]*U_inv_[2] + UD[2]*U_inv_[3];
+  result[3] = UD[1]*U_inv_[2] + UD[3]*U_inv_[3];
+}
 
 
 void High_pass_filter::matmul2by2(double a[], double b[], double result[])
 {
-  // column-major
-  result[0] = a[0]*b[0] + a[2]*b[1];
-  result[1] = a[1]*b[0] + a[3]*b[1];
-  result[2] = a[0]*b[2] + a[2]*b[3];
-  result[3] = a[1]*b[2] + a[3]*b[3];
+
 }
 
 void High_pass_filter::update_state_global_cedric(cv::Mat& delta_t_array)
 {
+  cv::Mat exp_D[2];  // diagonal 2x2 matrix at every cv::Mat pixel.
+  cv::Mat exp_A[4];  // column-major
+  cv::exp(delta_t_array*D_[0], exp_D[0]);
+  cv::exp(delta_t_array*D_[1], exp_D[1]);
 
+  undiagonalise_mat(exp_D, exp_A);  // undiagonalise based on U_ and U_inv, i.e. compute A = UDU'.
+
+  cv::Mat bias_state = exp_A[1].mul(log_intensity_state_)
+                       + exp_A[3].mul(bias_state_);
+
+  log_intensity_state_ = exp_A[0].mul(log_intensity_state_)
+                         + exp_A[2].mul(bias_state_);
+
+  bias_state_ = bias_state;  // could just update bias state first and use updated version since it changes slow
 }
 
-void High_pass_filter::update_state_local(const double& delta_t,
-                                               const int& x,
-                                               const int& y,
-                                               const bool& polarity)
+void High_pass_filter::undiagonalise_mat(cv::Mat D[], cv::Mat result[])
 {
-  double *a_exp;
-  constexpr int MATRIX_DIMENSION = 2;
-  constexpr int NROWS = 2;
-  constexpr int NCOLS = 2;
-
-
-  double a[4] = {-delta_t*cutoff_frequency_global_,
-                 delta_t*cutoff_frequency_bias_,
-                 -1,
-                 0};
-
-//  double a_t[4];
-//  r8mat_scale(NROWS, NCOLS, delta_t, a_t);
-
-//  double state[2] = {log_intensity_state_.at<double>(y, x),
-//                     bias_state_.at<double>(y, x)};
-
-  a_exp = r8mat_expm1(MATRIX_DIMENSION, a);
-
-  const double b1 = a_exp[0]*log_intensity_state_.at<double>(y, x)
-                    + a_exp[2]*bias_state_.at<double>(y, x);
-
-  const double b2 = a_exp[1]*log_intensity_state_.at<double>(y, x)
-                    + a_exp[3]*bias_state_.at<double>(y, x);
-
-  const double contrast_threshold = (polarity) ?
-      contrast_threshold_on_user_defined_ : contrast_threshold_off_user_defined_;
-
-  log_intensity_state_.at<double>(y, x) = b1 + contrast_threshold;
-  bias_state_.at<double>(y, x) = b2;
+  // compute UDU' in two stages.
+  // stage 1 UD
+  // column-major
+  cv::Mat UD[4];
+  UD[0] = U_[0]*D[0];  // scalar * mat
+  UD[1] = U_[1]*D[0];
+  UD[2] = U_[2]*D[1];
+  UD[3] = U_[3]*D[1];
+  // stage 2 (UD)U'
+  result[0] = UD[0]*U_inv_[0] + UD[2]*U_inv_[1];  // mat * scalar + mat * scalar
+  result[1] = UD[1]*U_inv_[0] + UD[3]*U_inv_[1];
+  result[2] = UD[0]*U_inv_[2] + UD[2]*U_inv_[3];
+  result[3] = UD[1]*U_inv_[2] + UD[3]*U_inv_[3];
 }
+
+//void High_pass_filter::matmul2by2_array(cv::Mat a[], double b[], cv::Mat result[])
+//{
+//  // column-major
+//  result[0] = a[0]*b[0] + a[2]*b[1];
+//  result[1] = a[1]*b[0] + a[3]*b[1];
+//  result[2] = a[0]*b[2] + a[2]*b[3];
+//  result[3] = a[1]*b[2] + a[3]*b[3];
+//}
 
 void High_pass_filter::update_log_intensity_state(const double& delta_t,
                                                   const int& x,
@@ -485,7 +497,6 @@ void High_pass_filter::publish_bias_state(const ros::Time& timestamp)
 
 void High_pass_filter::convert_log_intensity_state_to_display_image(cv::Mat& image_out, const double& ts)
 {
-  constexpr double PERCENTAGE_PIXELS_TO_DISCARD = 0.5;
   constexpr double LOG_INTENSITY_OFFSET = std::log(1.5);  // chosen because standard APS frames range from [1, 2].
   constexpr double FADE_DURATION = 2; // seconds. Time taken for dynamic range bounds to "take effect".
   // used for low-pass parameter to reach 95% of constant signal in FADE_DURATION seconds.
@@ -510,13 +521,18 @@ void High_pass_filter::convert_log_intensity_state_to_display_image(cv::Mat& ima
   {
     if (adaptive_dynamic_range_)
     {
+      constexpr int DO_EVERY_N_TIMES = 10;
+      static int count = DO_EVERY_N_TIMES;
+      double robust_min, robust_max;
+      if (count++ >= DO_EVERY_N_TIMES)
+      {
+        minMaxLocRobust(image, robust_min, robust_max);
+        count = 0;
+  //      cv::minMaxLoc(image, &robust_min, &robust_max);  // test speed
+      }
       constexpr double MAX_INTENSITY_LOWER_BOUND = EXPECTED_MEAN - 0.2;
       constexpr double MIN_INTENSITY_UPPER_BOUND = EXPECTED_MEAN + 0.2;
       constexpr double EXTEND_RANGE = 0.05;  // extend dynamic range for visual appeal.
-
-      double robust_min, robust_max;
-      minMaxLocRobust(image, &robust_min, &robust_max, PERCENTAGE_PIXELS_TO_DISCARD);
-
       intensity_lower_bound = std::min(beta*intensity_lower_bound + (1 - beta)
           * (robust_min - EXTEND_RANGE), MAX_INTENSITY_LOWER_BOUND);
 
@@ -525,8 +541,8 @@ void High_pass_filter::convert_log_intensity_state_to_display_image(cv::Mat& ima
     }
     else
     {
-      intensity_lower_bound = beta*intensity_lower_bound + (1 - beta)*intensity_min_user_defined_;
-      intensity_upper_bound = beta*intensity_upper_bound + (1 - beta)*intensity_max_user_defined_;
+      intensity_lower_bound = intensity_min_user_defined_;
+      intensity_upper_bound = intensity_max_user_defined_;
     }
   }
   const double intensity_range = intensity_upper_bound - intensity_lower_bound;
@@ -535,20 +551,20 @@ void High_pass_filter::convert_log_intensity_state_to_display_image(cv::Mat& ima
   t_last = ts;
 }
 
-void High_pass_filter::minMaxLocRobust(const cv::Mat& image, double* robust_min, double* robust_max,
-                                        const double& percentage_pixels_to_discard)
+void High_pass_filter::minMaxLocRobust(const cv::Mat& image,
+                                       double& robust_min,
+                                       double& robust_max)
 {
-  CHECK_NOTNULL(robust_max);
-  CHECK_NOTNULL(robust_min);
+  constexpr double PERCENTAGE_PIXELS_TO_DISCARD = 0.5;
   cv::Mat image_as_row;
   cv::Mat image_as_row_sorted;
-  const int single_row_idx_min = (0.5*percentage_pixels_to_discard/100)*image.total();
-  const int single_row_idx_max = (1 - 0.5*percentage_pixels_to_discard/100)*image.total();
+  const int single_row_idx_min = (0.5*PERCENTAGE_PIXELS_TO_DISCARD/100)*image.total();
+  const int single_row_idx_max = (1 - 0.5*PERCENTAGE_PIXELS_TO_DISCARD/100)*image.total();
   image_as_row = image.reshape(0, 1);
   cv::sort(image_as_row, image_as_row_sorted, CV_SORT_EVERY_ROW + CV_SORT_ASCENDING);
   image_as_row_sorted.convertTo(image_as_row_sorted, CV_64FC1);
-  *robust_min = image_as_row_sorted.at<double>(single_row_idx_min);
-  *robust_max = image_as_row_sorted.at<double>(single_row_idx_max);
+  robust_min = image_as_row_sorted.at<double>(single_row_idx_min);
+  robust_max = image_as_row_sorted.at<double>(single_row_idx_max);
 }
 
 void High_pass_filter::reconfigureCallback(pure_event_reconstruction::pure_event_reconstructionConfig &config, uint32_t level)
