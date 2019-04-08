@@ -83,8 +83,17 @@ private:
                                 const bool& polarity);
 
   void recalibrate_contrast_thresholds(const double& ts);
+
+  void publish_log_image(cv::Mat& image,
+                         const ros::Time& timestamp,
+                         const image_transport::Publisher& publisher);
+  cv::Mat process_log_image(cv::Mat& log_image,
+                            const double& ts);
+
   void publish_intensity_estimate(const ros::Time& ts);
-  void publish_bias_state(const ros::Time& ts);
+  void publish_raw_image(cv::Mat& image,
+                         const ros::Time& ts,
+                         const image_transport::Publisher& publisher);
   void convert_log_intensity_state_to_display_image(cv::Mat& display_image, const double& ts);
   void minMaxLocRobust(const cv::Mat& image,
                        double& lower_bound,
@@ -97,12 +106,13 @@ private:
   dynamic_reconfigure_callback_;
 
   // publishers
-  image_transport::Publisher intensity_estimate_pub_;
+  image_transport::Publisher image_state_pub_;
   image_transport::Publisher bias_pub_;
   image_transport::Publisher second_order_pub_;
 
   // internal image states
-  cv::Mat log_intensity_state_;
+  cv::Mat log_image_state_;  // first order (original)
+  cv::Mat second_order_state_;
   cv::Mat leaky_event_count_on_; // used to calibrate contrast threshold
   cv::Mat leaky_event_count_off_;
   cv::Mat bias_state_;
@@ -117,7 +127,7 @@ private:
   bool adaptive_dynamic_range_;
   bool save_images_;
   bool color_image_;
-  bool second_order_;
+  bool compute_second_order_;
 
   std::string save_dir_;
 
