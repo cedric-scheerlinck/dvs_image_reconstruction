@@ -51,6 +51,14 @@ private:
                           const int& x,
                           const int& y,
                           const bool& polarity);
+  void update_state_local_cedric(const double& delta_t,
+                                 const int& x,
+                                 const int& y,
+                                 const bool& polarity);
+  void update_state_global_cedric(cv::Mat& delta_t_array);
+  void matmul2by2(double a[],
+                  double b[],
+                  double result[]);
   void update_state_global(cv::Mat& delta_t_array);
 
 
@@ -132,6 +140,11 @@ private:
   double spatial_filter_sigma_;
 
 //  double event_count_total_;
+
+  // matrix exponential related quantities
+  double D_[2] = {0, 0};  // 2x2 diagonal matrix D_11 = D_[0], D_22 = D_[1] (D_12, D_21 = 0)
+  double U_[4] = {1, 1, 1, 1};  // column-major
+  double U_inv_[4] = {0, 0, 0, 0};  // inverse
 
 };
 

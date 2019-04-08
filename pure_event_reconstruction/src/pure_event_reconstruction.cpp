@@ -4,6 +4,7 @@
 #include "pure_event_reconstruction/utils.h"
 #include "matrix_exponential/r8lib.h"
 #include "matrix_exponential/matrix_exponential.h"
+#include <math.h>
 
 enum {GAUSSIAN, BILATERAL};
 
@@ -141,7 +142,8 @@ void High_pass_filter::process_event_msg(const dvs_msgs::EventArray::ConstPtr& m
 //      }
 //
 //      update_log_intensity_state(delta_t, x, y, polarity);
-      update_state_local(delta_t, x, y, polarity);
+//      update_state_local(delta_t, x, y, polarity);
+      update_state_local_cedric(delta_t, x, y, polarity);
 
       ts_array_.at<double>(y, x) = ts; // reset timestamp map at pixel
 
@@ -189,6 +191,53 @@ void High_pass_filter::initialise_image_states(const uint32_t& rows, const uint3
   initialised_ = true;
 
   VLOG(2) << "Initialised!";
+}
+
+void High_pass_filter::update_state_local_cedric(const double& delta_t,
+                                                 const int& x,
+                                                 const int& y,
+                                                 const bool& polarity)
+{
+  // compute exp(D*delta_t)
+  const double exp_D_11 = exp(D_[0]*delta_t);
+  const double exp_D_22 = exp(D_[1]*delta_t);
+  double exp_A[4];
+  double stage1[4];
+  // compute UDU' in two stages.
+  // stage 1 UD
+  stage1[0] = U_[0]*exp_D_11;
+  stage1[1] = U_[1]*exp_D_11;
+  stage1[2] = U_[2]*exp_D_22;
+  stage1[3] = U_[3]*exp_D_22;
+  // stage 2 (UD)U'
+  matmul2by2(stage1, U_inv_, exp_A);
+
+  double log_i_state = exp_A[0] * log_intensity_state_.at<double>(y, x)
+                       + exp_A[2] * bias_state_.at<double>(y, x);
+
+  bias_state_.at<double>(y, x) = exp_A[1] * log_intensity_state_.at<double>(y, x)
+                                 + exp_A[3] * bias_state_.at<double>(y, x);
+
+  const double contrast_threshold = (polarity) ?
+      contrast_threshold_on_user_defined_ : contrast_threshold_off_user_defined_;
+
+  log_intensity_state_.at<double>(y, x) = log_i_state + contrast_threshold;
+}
+
+
+
+void High_pass_filter::matmul2by2(double a[], double b[], double result[])
+{
+  // column-major
+  result[0] = a[0]*b[0] + a[2]*b[1];
+  result[1] = a[1]*b[0] + a[3]*b[1];
+  result[2] = a[0]*b[2] + a[2]*b[3];
+  result[3] = a[1]*b[2] + a[3]*b[3];
+}
+
+void High_pass_filter::update_state_global_cedric(cv::Mat& delta_t_array)
+{
+
 }
 
 void High_pass_filter::update_state_local(const double& delta_t,
@@ -504,9 +553,11 @@ void High_pass_filter::minMaxLocRobust(const cv::Mat& image, double* robust_min,
 
 void High_pass_filter::reconfigureCallback(pure_event_reconstruction::pure_event_reconstructionConfig &config, uint32_t level)
 {
+  static double a = 0;
+  static double b = 0;
   cutoff_frequency_global_ = config.Cutoff_frequency*2*M_PI;
   cutoff_frequency_per_event_component_ = config.Cutoff_frequency_per_event_component;
-  cutoff_frequency_bias_ = config.Cutoff_frequency_bias;
+  cutoff_frequency_bias_ = config.Cutoff_frequency_bias*2*M_PI;
   contrast_threshold_on_user_defined_ = config.Contrast_threshold_ON;
   contrast_threshold_off_user_defined_ = config.Contrast_threshold_OFF;
   intensity_min_user_defined_ = config.Intensity_min;
@@ -521,6 +572,32 @@ void High_pass_filter::reconfigureCallback(pure_event_reconstruction::pure_event
   if (reset)
   {
     initialise_image_states(log_intensity_state_.rows, log_intensity_state_.cols);
+  }
+
+  if ( (a != cutoff_frequency_global_) || (b != cutoff_frequency_bias_) )
+  {
+    a = cutoff_frequency_global_;
+    b = cutoff_frequency_bias_;
+    // check that eigenvalues of A are real
+    if (4*b > a*a)
+    {
+      VLOG(1) << "Eigenvalues of A not real. Please change gains (cutoff_frequency(s) for intensity and bias).";
+      return;
+    }
+    // (p)re-compute eigenvectors/values of A (A = UDU').
+    const double root = sqrt(a*a - 4*b);
+    D_[0] = (-a - root)/2;  // diagonal matrix, D_11 = D_[0], D_22 = D_[1]
+    D_[1] = (-a + root)/2;
+
+    U_[0] = D_[0]/b;  // column-major
+    U_[2] = D_[1]/b;
+
+    U_inv_[0] = -b/root;  // column-major
+    U_inv_[1] = b/root;
+    U_inv_[2] = (1 - a/root)/2;
+    U_inv_[3] = (1 + a/root)/2;
+
+    VLOG(3) << "Re-computed eigenvalue decomposition.";
   }
 }
 
