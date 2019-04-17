@@ -2,8 +2,8 @@
 #include <std_msgs/Float32.h>
 #include <glog/logging.h>
 #include "pure_event_reconstruction/utils.h"
-#include "matrix_exponential/r8lib.h"
-#include "matrix_exponential/matrix_exponential.h"
+//#include "matrix_exponential/r8lib.h"
+//#include "matrix_exponential/matrix_exponential.h"
 #include <math.h>
 
 enum {GAUSSIAN, BILATERAL};
@@ -229,7 +229,10 @@ void High_pass_filter::update_state_local_cedric(const double& delta_t,
   const double contrast_threshold = (polarity) ?
       contrast_threshold_on_user_defined_ : contrast_threshold_off_user_defined_;
 
-  second_order_state_.at<double>(y, x) = log_i_state + contrast_threshold;
+//  second_order_state_.at<double>(y, x) = log_i_state + contrast_threshold;
+
+  second_order_state_.at<double>(y, x) = exp(-cutoff_frequency_per_event_component_)
+                                         * log_i_state + contrast_threshold;
 }
 
 void High_pass_filter::undiagonalise(double D[], double result[])
@@ -681,6 +684,7 @@ void High_pass_filter::reconfigureCallback(pure_event_reconstruction::pure_event
 {
   static double a = 0;
   static double b = 0;
+  static double c = 0;
   cutoff_frequency_global_ = config.Cutoff_frequency*2*M_PI;
   cutoff_frequency_per_event_component_ = config.Cutoff_frequency_per_event_component;
   cutoff_frequency_bias_ = config.Cutoff_frequency_bias*2*M_PI;
@@ -694,24 +698,26 @@ void High_pass_filter::reconfigureCallback(pure_event_reconstruction::pure_event
   adaptive_dynamic_range_ = config.Auto_adjust_dynamic_range;
   color_image_ = config.Color_display;
   compute_second_order_ = config.Second_order;
+  bias_gain_ = config.Bias_gain;
   bool reset = config.Reset;
   if (reset)
   {
     initialise_image_states(second_order_state_.rows, second_order_state_.cols);
   }
 
-  if ( (a != cutoff_frequency_global_) || (b != cutoff_frequency_bias_) )
+  if ( (a != cutoff_frequency_global_) || (b != cutoff_frequency_bias_) || (c != bias_gain_) )
   {
     a = cutoff_frequency_global_;
     b = cutoff_frequency_bias_;
+    c = bias_gain_;
     // check that eigenvalues of A are real
-    if (4*b > a*a)
+    if (4*b*c > a*a)
     {
       VLOG(1) << "Eigenvalues of A not real. Please change gains (cutoff_frequency(s) for intensity and bias).";
       return;
     }
     // (p)re-compute eigenvectors/values of A (A = UDU').
-    const double root = sqrt(a*a - 4*b);
+    const double root = sqrt(a*a - 4*b*c);
     D_[0] = (-a - root)/2;  // diagonal matrix, D_11 = D_[0], D_22 = D_[1]
     D_[1] = (-a + root)/2;
 

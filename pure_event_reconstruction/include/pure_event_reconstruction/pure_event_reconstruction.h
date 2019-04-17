@@ -138,6 +138,7 @@ private:
   double cutoff_frequency_per_event_component_;
   double event_count_cutoff_frequency_;
   double cutoff_frequency_bias_;
+  double bias_gain_;
 
   // contrast thresholds
   double contrast_threshold_on_user_defined_;
