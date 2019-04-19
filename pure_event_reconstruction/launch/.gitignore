@@ -2,3 +2,4 @@
 !davis_mono.launch
 !davis_color.launch
 !from_rosbag.launch
+!no_popup.launch
