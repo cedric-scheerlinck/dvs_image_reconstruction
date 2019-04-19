@@ -3,7 +3,7 @@
 #include <glog/logging.h>
 #include "pure_event_reconstruction/utils.h"
 
-enum {GAUSSIAN, BILATERAL};
+enum {GAUSSIAN, MEDIAN, BILATERAL};
 
 namespace pure_event_reconstruction
 {
@@ -187,7 +187,23 @@ cv::exp(-cutoff_frequency_global_ * (ts - ts_array_), beta);
 
 log_intensity_state_ = log_intensity_state_.mul(beta);
 ts_array_.setTo(ts);
+// spatial filter here - could it be this simple?
+cv::Mat tmp;
+log_intensity_state_.convertTo(tmp, CV_32FC1);
 
+if (spatial_smoothing_method_ == GAUSSIAN)
+{
+  cv::GaussianBlur(tmp, tmp, cv::Size(5, 5), spatial_filter_sigma_, spatial_filter_sigma_);
+}
+else if (spatial_smoothing_method_ == MEDIAN)
+{
+  cv::medianBlur(tmp, tmp, 3);
+}
+else
+{
+  return;
+}
+tmp.convertTo(log_intensity_state_, CV_64FC1);
 }
 
 void High_pass_filter::update_leaky_event_count(const double& ts, const int& x, const int& y,
@@ -264,20 +280,24 @@ void High_pass_filter::publish_intensity_estimate(const ros::Time& timestamp)
     cv_image.encoding = "mono8";
   }
 
-  if (spatial_filter_sigma_ > 0)
-  {
-    cv::Mat filtered_display_image;
-    if (spatial_smoothing_method_ == GAUSSIAN)
-    {
-      cv::GaussianBlur(display_image, filtered_display_image, cv::Size(5, 5), spatial_filter_sigma_, spatial_filter_sigma_);
-    }
-    else if (spatial_smoothing_method_ == BILATERAL)
-    {
-      const double bilateral_sigma = spatial_filter_sigma_*25;
-      cv::bilateralFilter(display_image, filtered_display_image, 5, bilateral_sigma, bilateral_sigma);
-    }
-    display_image = filtered_display_image; // data is not copied
-  }
+//  if (spatial_filter_sigma_ > 0)
+//  {
+//    cv::Mat filtered_display_image;
+//    if (spatial_smoothing_method_ == GAUSSIAN)
+//    {
+//      cv::GaussianBlur(display_image, filtered_display_image, cv::Size(5, 5), spatial_filter_sigma_, spatial_filter_sigma_);
+//    }
+//    else if (spatial_smoothing_method_ == MEDIAN)
+//    {
+//      cv::medianBlur(display_image, filtered_display_image, 5);
+//    }
+//    else if (spatial_smoothing_method_ == BILATERAL)
+//    {
+//      const double bilateral_sigma = spatial_filter_sigma_*25;
+//      cv::bilateralFilter(display_image, filtered_display_image, 5, bilateral_sigma, bilateral_sigma);
+//    }
+//    display_image = filtered_display_image; // data is not copied
+//  }
 
   cv_image.image = display_image;
   cv_image.header.stamp = timestamp;
@@ -370,9 +390,9 @@ void High_pass_filter::reconfigureCallback(pure_event_reconstruction::pure_event
   intensity_max_user_defined_ = config.Intensity_max;
   adaptive_contrast_threshold_ = config.Auto_detect_contrast_thresholds;
   spatial_filter_sigma_ = config.Spatial_filter_sigma;
-  spatial_smoothing_method_ = int(config.Bilateral_filter);
   adaptive_dynamic_range_ = config.Auto_adjust_dynamic_range;
   color_image_ = config.Color_display;
+  spatial_smoothing_method_ = config.Spatial_filter;
 }
 
 } // namespace
