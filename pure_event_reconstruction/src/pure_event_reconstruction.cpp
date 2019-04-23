@@ -255,7 +255,7 @@ void High_pass_filter::publish_intensity_estimate(const ros::Time& timestamp)
   if (color_image_)
   {
     cv::Mat color_display_image;
-    cv::cvtColor(display_image, color_display_image, CV_BayerBG2BGR);
+    cv::cvtColor(display_image, color_display_image, CV_BayerBG2BGR_EA);
     display_image = color_display_image;
     cv_image.encoding = "bgr8";
   }
