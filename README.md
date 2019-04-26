@@ -53,8 +53,8 @@ Build the packages:
     source ~/catkin_ws/devel/setup.bash
 
 ## Downloads
-Datasets can be found [here](https://drive.google.com/drive/folders/1Jv73p1-Hi56HXyal4SHQbzs2zywISOvc?usp=sharing).
-The [Color Event Dataset](http://rpg.ifi.uzh.ch/CED.html) containing color frames and events is now available!
+Datasets can be found [here](https://drive.google.com/drive/folders/1Jv73p1-Hi56HXyal4SHQbzs2zywISOvc?usp=sharing).  
+The **[Color Event Dataset](http://rpg.ifi.uzh.ch/CED.html)** containing color frames and events is now available!
 
 ## Video
 [![dvs_image_reconstruction_video](images/thumbnail_combined.png)](https://youtu.be/bZ0ZKido0Ag)
