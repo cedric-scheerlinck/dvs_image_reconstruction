@@ -1,4 +1,5 @@
 #include "pure_event_reconstruction/pure_event_reconstruction.h"
+#include <cstdlib>
 #include <std_msgs/Float32.h>
 #include <glog/logging.h>
 #include "pure_event_reconstruction/utils.h"
@@ -33,6 +34,13 @@ High_pass_filter::High_pass_filter(ros::NodeHandle & nh, ros::NodeHandle nh_priv
     if (save_dir_.back() != '/')
     {
       save_dir_.append("/");
+    }
+
+    const int dir_err = system((std::string("mkdir -p ") + save_dir_).c_str());
+    if (-1 == dir_err)
+    {
+        LOG(ERROR) << "Error creating save directory!";
+        return;
     }
 
     VLOG(1) << "Saving images to " << save_dir_ ;
