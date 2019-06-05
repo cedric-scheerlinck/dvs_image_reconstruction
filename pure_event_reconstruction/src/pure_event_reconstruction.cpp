@@ -110,9 +110,9 @@ void High_pass_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
       }
       update_log_intensity_state_global(delta_t_array);
       update_state_global_cedric(delta_t_array);
-      publish_log_image(log_image_state_, ros_ts, image_state_pub_);
-      publish_log_image(second_order_state_, ros_ts, second_order_pub_);
-      publish_raw_image(bias_state_, ros_ts, bias_pub_);
+      publish_log_image(log_image_state_, ros_ts, image_state_pub_, "first_order");
+      publish_log_image(second_order_state_, ros_ts, second_order_pub_, "second_order");
+      publish_raw_image(bias_state_, ros_ts, bias_pub_, "bias");
       ts_array_.setTo(ts);
     }
   }
@@ -424,7 +424,8 @@ void High_pass_filter::recalibrate_contrast_thresholds(const double& ts)
 
 void High_pass_filter::publish_log_image(cv::Mat& image,
                                          const ros::Time& timestamp,
-                                         const image_transport::Publisher& publisher)
+                                         const image_transport::Publisher& publisher,
+                                         std::string save_dir="")
 {
   cv::Mat display_image = process_log_image(image, timestamp.toSec());
   cv_bridge::CvImage cv_image;
@@ -463,7 +464,10 @@ void High_pass_filter::publish_log_image(cv::Mat& image,
   if (save_images_)
   {
    static int image_counter = 0;
-   std::string save_path = save_dir_ + "image" + std::to_string(image_counter) + ".png";
+   char image_counter_c_string[10];
+   std::sprintf(image_counter_c_string, "%05d", image_counter);
+   std::string image_counter_str(image_counter_c_string);
+   std::string save_path = save_dir_ + save_dir + "/image" + image_counter_str + ".png";
    cv::imwrite(save_path, display_image);
    image_counter++;
   }
@@ -518,7 +522,8 @@ void High_pass_filter::publish_intensity_estimate(const ros::Time& timestamp)
 
 void High_pass_filter::publish_raw_image(cv::Mat& image,
                                          const ros::Time& timestamp,
-                                         const image_transport::Publisher& publisher)
+                                         const image_transport::Publisher& publisher,
+                                         std::string save_dir="")
 {
   cv::Mat display_image;
   cv_bridge::CvImage cv_image;
@@ -541,13 +546,16 @@ void High_pass_filter::publish_raw_image(cv::Mat& image,
   cv_image.header.stamp = timestamp;
   publisher.publish(cv_image.toImageMsg());
 
-//  if (save_images_) //FIX THIS
-//  {
-//    static int image_counter = 0;
-//    std::string save_path = save_dir_ + "image" + std::to_string(image_counter) + ".png";
-//    cv::imwrite(save_path, display_image);
-//    image_counter++;
-//  }
+  if (save_images_)
+  {
+   static int image_counter = 0;
+   char image_counter_c_string[10];
+  std::sprintf(image_counter_c_string, "%05d", image_counter);
+  std::string image_counter_str(image_counter_c_string);
+   std::string save_path = save_dir_ + save_dir + "/image" + image_counter_str + ".png";
+   cv::imwrite(save_path, display_image);
+   image_counter++;
+  }
 }
 
 cv::Mat High_pass_filter::process_log_image(cv::Mat& log_image, const double& ts)

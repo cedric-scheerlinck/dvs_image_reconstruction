@@ -86,14 +86,16 @@ private:
 
   void publish_log_image(cv::Mat& image,
                          const ros::Time& timestamp,
-                         const image_transport::Publisher& publisher);
+                         const image_transport::Publisher& publisher,
+                         std::string save_dir);
   cv::Mat process_log_image(cv::Mat& log_image,
                             const double& ts);
 
   void publish_intensity_estimate(const ros::Time& ts);
   void publish_raw_image(cv::Mat& image,
                          const ros::Time& ts,
-                         const image_transport::Publisher& publisher);
+                         const image_transport::Publisher& publisher,
+                         std::string save_dir);
   void convert_log_intensity_state_to_display_image(cv::Mat& display_image, const double& ts);
   void minMaxLocRobust(const cv::Mat& image,
                        double& lower_bound,
