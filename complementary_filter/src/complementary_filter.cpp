@@ -22,12 +22,12 @@ Complementary_filter::Complementary_filter(ros::NodeHandle & nh, ros::NodeHandle
   std::string save_dir;
 
   // read parameters from launch file
-  nh_private.getParam("publish_framerate", publish_framerate_);
+//  nh_private.getParam("publish_framerate", publish_framerate_);
   nh_private.getParam("contrast_threshold_recalibration_frequency", contrast_threshold_recalibration_frequency_);
   nh_private.getParam("save_dir", save_dir);
   nh_private.getParam("working_dir", working_dir);
 
-  VLOG(1) << "Found parameter publish_framerate " << publish_framerate_;
+//  VLOG(1) << "Found parameter publish_framerate " << publish_framerate_;
   VLOG(1) << "Found parameter contrast_threshold_recalibration_frequency " << contrast_threshold_recalibration_frequency_;
 
   if (save_dir.empty())
@@ -72,6 +72,7 @@ Complementary_filter::~Complementary_filter()
 void Complementary_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
 {
   // initialisation only to be performed once at the beginning
+  static int event_count = 0;
   if (!initialised_)
   {
     initialise_image_states(msg->height, msg->width);
@@ -86,7 +87,7 @@ void Complementary_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& 
       const int x = msg->events[i].x;
       const int y = msg->events[i].y;
       const bool polarity = msg->events[i].polarity;
-
+      event_count++;
       update_log_intensity_state(ts, x, y, polarity);
 
       if (adaptive_contrast_threshold_)
@@ -102,12 +103,14 @@ void Complementary_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& 
         }
       }
 
-      if (publish_framerate_ > 0 && ts > t_next_publish_)
+//      if (publish_framerate_ > 0 && ts > t_next_publish_)
+      if (publish_framerate_ > 0 && event_count > publish_framerate_*1e3)
       {
         update_log_intensity_state_global(ts);
         update_low_freq_frame();
         publish_intensity_estimate(msg->events[i].ts);
-        t_next_publish_ = ts + 1 / publish_framerate_;
+        event_count = 0;
+//        t_next_publish_ = ts + 1 / publish_framerate_;
       }
     }
 
@@ -123,16 +126,36 @@ void Complementary_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& 
 
 void Complementary_filter::update_low_freq_frame()
 {
+  constexpr double decay = 0.98;
   // make sure everything has been initialised
   if (!initialised_)
   {
     return;
   }
-  cv::GaussianBlur(log_intensity_state_,
-                   log_intensity_aps_frame_last_,
-                   cv::Size(5, 5),
-                   spatial_filter_sigma_,
-                   spatial_filter_sigma_);
+  if (spatial_filter_sigma_ > 0)
+  {
+    if (spatial_smoothing_method_ == GAUSSIAN)
+    {
+      cv::GaussianBlur(decay*log_intensity_state_,
+                           log_intensity_aps_frame_last_,
+                           cv::Size(5, 5),
+                           spatial_filter_sigma_,
+                           spatial_filter_sigma_);
+    }
+    else if (spatial_smoothing_method_ == BILATERAL)
+    {
+      const double bilateral_sigma = spatial_filter_sigma_*20;
+      cv::Mat log_intensity_state_float;
+      cv::Mat log_intensity_aps_frame_last_float;
+      log_intensity_state_.convertTo(log_intensity_state_float, CV_32FC1);
+      cv::bilateralFilter(decay*log_intensity_state_float,
+                          log_intensity_aps_frame_last_float,
+                          5,
+                          bilateral_sigma,
+                          bilateral_sigma);
+      log_intensity_aps_frame_last_float.convertTo(log_intensity_aps_frame_last_, CV_64FC1);
+    }
+  }
 }
 
 void Complementary_filter::imageCallback(const sensor_msgs::Image::ConstPtr& msg)
@@ -176,45 +199,25 @@ void Complementary_filter::imageCallback(const sensor_msgs::Image::ConstPtr& msg
 void Complementary_filter::offlineEventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
 {
   // smart wrapper for eventsCallback that guarantees correct event/image ordering.
-
-  static int image_idx = 0;
+  static int event_count = 0;
   static std::vector<dvs_msgs::Event> events;
   for(auto e : msg->events)
   {
-    if (image_idx < image_timestamps_.size() - 1)
+    event_count++;
+    if (event_count > publish_framerate_*1e3)
     {
-      const double image_ts = image_timestamps_[image_idx].toSec();
-      if (e.ts.toSec() > image_ts)
-      {
-        // package events and call eventsCallback
-        dvs_msgs::EventArray event_array_msg;
-        event_array_msg.events = events;
-        event_array_msg.width = msg->width;
-        event_array_msg.height = msg->height;
-        event_array_msg.header.stamp = events.back().ts;
-        dvs_msgs::EventArrayConstPtr event_array_pointer = boost::make_shared<dvs_msgs::EventArray>(event_array_msg);
-        eventsCallback(event_array_pointer);
-        events.clear();
-        // update and set new image
-        update_log_intensity_state_global(image_ts);
-        if (images_[image_idx].size() == log_intensity_aps_frame_last_.size())
-        {
-          cv::log(images_[image_idx], log_intensity_aps_frame_last_);
-        }
-        if (adaptive_contrast_threshold_)
-        {
-          recalibrate_contrast_thresholds(image_timestamps_[image_idx]);
-        }
-
-        if (adaptive_cutoff_frequency_)
-        {
-          recalibrate_cutoff_frequency_array();
-          publish_cutoff_frequency_array(image_timestamps_[image_idx]);
-        }
-        image_idx++;
-      }
-      events.push_back(e);
+      // package events and call eventsCallback
+      dvs_msgs::EventArray event_array_msg;
+      event_array_msg.events = events;
+      event_array_msg.width = msg->width;
+      event_array_msg.height = msg->height;
+      event_array_msg.header.stamp = events.back().ts;
+      dvs_msgs::EventArrayConstPtr event_array_pointer = boost::make_shared<dvs_msgs::EventArray>(event_array_msg);
+      eventsCallback(event_array_pointer);
+      events.clear();
+      event_count = 0;
     }
+    events.push_back(e);
   }
 }
 
@@ -462,14 +465,36 @@ void Complementary_filter::update_xy_contrast_threshold(const uint32_t& row, con
 
 void Complementary_filter::publish_intensity_estimate(const ros::Time& timestamp)
 {
-  const double display_range = intensity_max_ - intensity_min_;
   cv::Mat display_image;
   cv_bridge::CvImage cv_image;
 
   cv::exp(log_intensity_state_, display_image); //[1, 2]
   display_image -= 1; // [0, 1]
-  display_image -= intensity_min_;
-  display_image.convertTo(display_image, CV_8UC1, 255.0/display_range);
+
+  if (adaptive_dynamic_range_)
+  {
+    static double intensity_lower_bound = intensity_min_;
+    static double intensity_upper_bound = intensity_max_;
+    constexpr double extend = 0.05;
+    constexpr double beta = 0.99;
+    double robust_min, robust_max;
+    minMaxLocRobust(display_image, &robust_min, &robust_max, 0.5);
+
+    intensity_lower_bound = beta*intensity_lower_bound + (1 - beta)
+        * (robust_min);
+
+    intensity_upper_bound = beta*intensity_upper_bound + (1 - beta)
+        * (robust_max);
+    display_image = (display_image - intensity_lower_bound)
+                    / (std::fabs(intensity_upper_bound - intensity_lower_bound) + 1e-6);
+    display_image = (1 - extend)*display_image + extend/2;
+    display_image.convertTo(display_image, CV_8UC1, 255.0);
+  } else
+  {
+    const double display_range = intensity_max_ - intensity_min_;
+    display_image -= intensity_min_;
+    display_image.convertTo(display_image, CV_8UC1, 255.0/(std::fabs(display_range) + 1e-6));
+  }
 
   if (color_image_)
   {
@@ -586,6 +611,8 @@ void Complementary_filter::reconfigureCallback
   spatial_filter_sigma_ = config.Spatial_filter_sigma;
   spatial_smoothing_method_ = int(config.Bilateral_filter);
   color_image_ = config.Color_display;
+  adaptive_dynamic_range_ = config.Auto_dynamic_range;
+  publish_framerate_ = config.Publish_framerate;
 }
 
 } // namespace
