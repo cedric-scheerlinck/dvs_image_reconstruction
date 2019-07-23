@@ -95,7 +95,7 @@ void High_pass_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
 //      t_next_recalibrate_contrast_thresholds_ = ts + 1 / contrast_threshold_recalibration_frequency;
 //    }
 //
-//    if (publish_framerate_ < 0)
+    if (publish_framerate_ < 0)
     {
       cv::Mat delta_t_array;
       delta_t_array = ts - ts_array_;
@@ -131,7 +131,8 @@ void High_pass_filter::process_event_msg(const dvs_msgs::EventArray::ConstPtr& m
     const int y = msg->events[i].y;
     if (x < msg->width && x > 0 && y < msg->height && y > 0) // preserve border
     {
-      const double ts = msg->events[i].ts.toSec();
+      const ros::Time ros_ts = msg->events[i].ts;
+      const double ts = ros_ts.toSec();
       const bool polarity = msg->events[i].polarity;
       const double delta_t = (ts - ts_array_.at<double>(y, x));
       if (delta_t < 0)
@@ -157,6 +158,27 @@ void High_pass_filter::process_event_msg(const dvs_msgs::EventArray::ConstPtr& m
       update_state_local_cedric(delta_t, x, y, polarity);
 
       ts_array_.at<double>(y, x) = ts; // reset timestamp map at pixel
+  
+      if (publish_framerate_ > 0 && ts > t_next_publish_)
+      {
+        cv::Mat delta_t_array;
+        delta_t_array = ts - ts_array_;
+        double min;
+        cv::minMaxLoc(delta_t_array, &min, nullptr);
+        if (min < 0)
+        {
+          LOG(WARNING) << "Warning: non-monotonic timestamp detected, resetting...";
+          initialise_image_states(second_order_state_.rows, second_order_state_.cols);
+          return;
+        }
+        update_log_intensity_state_global(delta_t_array);
+        update_state_global_cedric(delta_t_array);
+        publish_log_image(log_image_state_, ros_ts, image_state_pub_, "first_order");
+        publish_log_image(second_order_state_, ros_ts, second_order_pub_, "second_order");
+        publish_raw_image(bias_state_, ros_ts, bias_pub_, "bias");
+        ts_array_.setTo(ts);
+        t_next_publish_ = ts + 1 / publish_framerate_;
+      }
 
       // global update
 //      if (publish_framerate_ > 0 && ts > t_next_publish_)
@@ -528,7 +550,9 @@ void High_pass_filter::publish_raw_image(cv::Mat& image,
   cv::Mat display_image;
   cv_bridge::CvImage cv_image;
 
-  cv::normalize(image, display_image, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+//  cv::normalize(image, display_image, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+
+  image.convertTo(display_image, CV_8UC1, 150, 75);
 
   if (color_image_)
   {
