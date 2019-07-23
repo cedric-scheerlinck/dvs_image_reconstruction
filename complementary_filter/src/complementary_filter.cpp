@@ -105,6 +105,7 @@ void Complementary_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& 
       if (publish_framerate_ > 0 && ts > t_next_publish_)
       {
         update_log_intensity_state_global(ts);
+        update_low_freq_frame();
         publish_intensity_estimate(msg->events[i].ts);
         t_next_publish_ = ts + 1 / publish_framerate_;
       }
@@ -120,6 +121,20 @@ void Complementary_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& 
   }
 }
 
+void Complementary_filter::update_low_freq_frame()
+{
+  // make sure everything has been initialised
+  if (!initialised_)
+  {
+    return;
+  }
+  cv::GaussianBlur(log_intensity_state_,
+                   log_intensity_aps_frame_last_,
+                   cv::Size(5, 5),
+                   spatial_filter_sigma_,
+                   spatial_filter_sigma_);
+}
+
 void Complementary_filter::imageCallback(const sensor_msgs::Image::ConstPtr& msg)
 {
   // make sure everything has been initialised
@@ -127,24 +142,24 @@ void Complementary_filter::imageCallback(const sensor_msgs::Image::ConstPtr& msg
   {
     return;
   }
-  cv::Mat last_image;
-  cv_bridge::CvImagePtr cv_ptr;
-  try
-  {
-    cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::MONO8);
-  } catch (cv_bridge::Exception& e)
-  {
-    ROS_ERROR("cv_bridge exception: %s", e.what());
-    return;
-  }
-
-  cv_ptr->image.convertTo(last_image, CV_64FC1, 1 / 255.0, 1);
-
-  // put logarithm of APS frame into class member variable
-  if (last_image.size() == log_intensity_aps_frame_last_.size())
-  {
-    cv::log(last_image, log_intensity_aps_frame_last_);
-  }
+//  cv::Mat last_image;
+//  cv_bridge::CvImagePtr cv_ptr;
+//  try
+//  {
+//    cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::MONO8);
+//  } catch (cv_bridge::Exception& e)
+//  {
+//    ROS_ERROR("cv_bridge exception: %s", e.what());
+//    return;
+//  }
+//
+//  cv_ptr->image.convertTo(last_image, CV_64FC1, 1 / 255.0, 1);
+//
+//  // put logarithm of APS frame into class member variable
+//  if (last_image.size() == log_intensity_aps_frame_last_.size())
+//  {
+//    cv::log(last_image, log_intensity_aps_frame_last_);
+//  }
 
   if (adaptive_contrast_threshold_)
   {
@@ -468,20 +483,20 @@ void Complementary_filter::publish_intensity_estimate(const ros::Time& timestamp
     cv_image.encoding = "mono8";
   }
 
-  if (spatial_filter_sigma_ > 0)
-  {
-    cv::Mat filtered_display_image;
-    if (spatial_smoothing_method_ == GAUSSIAN)
-    {
-      cv::GaussianBlur(display_image, filtered_display_image, cv::Size(5, 5), spatial_filter_sigma_, spatial_filter_sigma_);
-    }
-    else if (spatial_smoothing_method_ == BILATERAL)
-    {
-      const double bilateral_sigma = spatial_filter_sigma_*20;
-      cv::bilateralFilter(display_image, filtered_display_image, 5, bilateral_sigma, bilateral_sigma);
-    }
-    display_image = filtered_display_image;
-  }
+//  if (spatial_filter_sigma_ > 0)
+//  {
+//    cv::Mat filtered_display_image;
+//    if (spatial_smoothing_method_ == GAUSSIAN)
+//    {
+//      cv::GaussianBlur(display_image, filtered_display_image, cv::Size(5, 5), spatial_filter_sigma_, spatial_filter_sigma_);
+//    }
+//    else if (spatial_smoothing_method_ == BILATERAL)
+//    {
+//      const double bilateral_sigma = spatial_filter_sigma_*20;
+//      cv::bilateralFilter(display_image, filtered_display_image, 5, bilateral_sigma, bilateral_sigma);
+//    }
+//    display_image = filtered_display_image;
+//  }
 
   cv_image.image = display_image;
   cv_image.header.stamp = timestamp;

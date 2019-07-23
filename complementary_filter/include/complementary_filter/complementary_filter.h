@@ -18,6 +18,8 @@ public:
   Complementary_filter(ros::NodeHandle & nh, ros::NodeHandle nh_private);
   void eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg);
   void imageCallback(const sensor_msgs::Image::ConstPtr& msg);
+  void update_low_freq_frame();
+
   void offlineEventsCallback(const dvs_msgs::EventArray::ConstPtr& msg);
   void load_images(const sensor_msgs::Image::ConstPtr& msg);
 
