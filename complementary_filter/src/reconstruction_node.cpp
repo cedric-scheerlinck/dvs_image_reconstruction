@@ -95,8 +95,16 @@ int main(int argc, char* argv[])
 
     VLOG(1) << "Playing bag...";
     // all the work is done here
+    std::clock_t start;
+    double duration;
+    start = std::clock();
+
     player.play();
+    
+    duration = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;
+
     VLOG(1) << "...done!";
+    VLOG(1) << "Duration (s): " << duration;
 
   }
 
