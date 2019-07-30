@@ -200,6 +200,7 @@ void Complementary_filter::offlineEventsCallback(const dvs_msgs::EventArray::Con
 {
   // smart wrapper for eventsCallback that guarantees correct event/image ordering.
   static int event_count = 0;
+  static double total_events = 0;
   static std::vector<dvs_msgs::Event> events;
   for(auto e : msg->events)
   {
@@ -215,6 +216,7 @@ void Complementary_filter::offlineEventsCallback(const dvs_msgs::EventArray::Con
       dvs_msgs::EventArrayConstPtr event_array_pointer = boost::make_shared<dvs_msgs::EventArray>(event_array_msg);
       eventsCallback(event_array_pointer);
       events.clear();
+      total_events = total_events + event_count
       event_count = 0;
     }
     events.push_back(e);
