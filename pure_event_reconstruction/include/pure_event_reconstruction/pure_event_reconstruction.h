@@ -57,6 +57,7 @@ private:
   void minMaxLocRobust(const cv::Mat& image, double* lower_bound, double* upper_bound,
                                           const double& percentage_pixels_to_discard);
 
+
   // dynamic reconfigure
   boost::shared_ptr<dynamic_reconfigure::Server<pure_event_reconstruction::pure_event_reconstructionConfig> > server_;
   dynamic_reconfigure::Server<pure_event_reconstruction::pure_event_reconstructionConfig>::CallbackType dynamic_reconfigure_callback_;
