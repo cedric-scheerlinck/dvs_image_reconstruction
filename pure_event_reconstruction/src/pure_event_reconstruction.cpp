@@ -16,15 +16,13 @@ High_pass_filter::High_pass_filter(ros::NodeHandle & nh, ros::NodeHandle nh_priv
 
   std::string working_dir;
   std::string save_dir;
-  std::string c_on_path;
-  std::string c_off_path;
+  std::string calibration_path;
   std::string node_name;
 
   nh_private.getParam("publish_framerate", publish_framerate_);
   nh_private.getParam("save_dir", save_dir);
   nh_private.getParam("working_dir", working_dir);
-  nh_private.getParam("c_on_path", c_on_path);
-  nh_private.getParam("c_off_path", c_off_path);
+  nh_private.getParam("calibration_path", calibration_path);
   nh_private.getParam("node_name", node_name);
 
   VLOG(1) << "Found parameter publish_framerate " << publish_framerate_;
@@ -50,13 +48,11 @@ High_pass_filter::High_pass_filter(ros::NodeHandle & nh, ros::NodeHandle nh_priv
     VLOG(1) << "Saving images to " << save_dir_ ;
   }
 
-  cv::FileStorage c_on_file(c_on_path, cv::FileStorage::READ);
-  c_on_file["c"] >> contrast_threshold_on_mat_;
-  c_on_file.release();
-  cv::FileStorage c_off_file(c_off_path, cv::FileStorage::READ);
-  c_off_file["c"] >> contrast_threshold_off_mat_;
-  c_off_file.release();
-  VLOG(1) << "Loaded calibration from\n" << c_on_path << "\n" << c_off_path;
+  cv::FileStorage infile(calibration_path, cv::FileStorage::READ);
+  infile["on"] >> contrast_threshold_on_mat_;
+  infile["off"] >> contrast_threshold_off_mat_;
+  infile.release();
+  VLOG(1) << "Loaded calibration from\n" << calibration_path;
 
   // setup publishers
   image_transport::ImageTransport it_(nh_);
@@ -146,6 +142,12 @@ void High_pass_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
 
 void High_pass_filter::initialise_image_states(const uint32_t& rows, const uint32_t& columns)
 {
+  if (rows != contrast_threshold_on_mat_.rows || columns != contrast_threshold_on_mat_.cols)
+  {
+    LOG(ERROR) << "Shape of contrast threshold (on) mat does not match shape of event msg";
+    return;
+  }
+  contrast_threshold_off_mat_ = -cv::Mat::ones(rows, columns, CV_64FC1)*0.1;
   log_intensity_state_ = cv::Mat::zeros(rows, columns, CV_64FC1);
   leaky_event_count_on_ = cv::Mat::zeros(rows, columns, CV_64FC1);
   leaky_event_count_off_ = cv::Mat::zeros(rows, columns, CV_64FC1);

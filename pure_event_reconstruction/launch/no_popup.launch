@@ -3,7 +3,7 @@
   <arg name="bag_path" default="" /> 
   <arg name="save_dir" default="" />
   <arg name="publish_framerate" default="60.0" />
-  <arg name="calibration_dir" />
+  <arg name="calibration_path" />
   <arg name="node_name" default="reconstruction_node" />
   
   <!-- pure event reconstruction -->
@@ -12,8 +12,7 @@
     <param name="bag_path" type="str" value="$(arg bag_path)"/>
     <param name="save_dir" type="str" value="$(arg save_dir)"/>
 	<param name="publish_framerate" type="double" value="$(arg publish_framerate)"/>
-    <param name="c_on_path" type="str" value="$(arg calibration_dir)/contrast_threshold_on.xml" />
-    <param name="c_off_path" type="str" value="$(arg calibration_dir)/contrast_threshold_off.xml" />
+    <param name="calibration_path" type="str" value="$(arg calibration_path)" />
     <param name="node_name" type="str" value="$(arg node_name)" />
 	
     <remap from="events" to="dvs/events" />
