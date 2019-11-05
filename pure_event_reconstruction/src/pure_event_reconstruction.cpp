@@ -16,10 +16,16 @@ High_pass_filter::High_pass_filter(ros::NodeHandle & nh, ros::NodeHandle nh_priv
 
   std::string working_dir;
   std::string save_dir;
+  std::string c_on_path;
+  std::string c_off_path;
+  std::string node_name;
 
   nh_private.getParam("publish_framerate", publish_framerate_);
   nh_private.getParam("save_dir", save_dir);
   nh_private.getParam("working_dir", working_dir);
+  nh_private.getParam("c_on_path", c_on_path);
+  nh_private.getParam("c_off_path", c_off_path);
+  nh_private.getParam("node_name", node_name);
 
   VLOG(1) << "Found parameter publish_framerate " << publish_framerate_;
 
@@ -35,20 +41,26 @@ High_pass_filter::High_pass_filter(ros::NodeHandle & nh, ros::NodeHandle nh_priv
     {
       save_dir_.append("/");
     }
-
     const int dir_err = system((std::string("mkdir -p ") + save_dir_).c_str());
     if (-1 == dir_err)
     {
         LOG(ERROR) << "Error creating save directory!";
         return;
     }
-
     VLOG(1) << "Saving images to " << save_dir_ ;
   }
 
+  cv::FileStorage c_on_file(c_on_path, cv::FileStorage::READ);
+  c_on_file["c"] >> contrast_threshold_on_mat_;
+  c_on_file.release();
+  cv::FileStorage c_off_file(c_off_path, cv::FileStorage::READ);
+  c_off_file["c"] >> contrast_threshold_off_mat_;
+  c_off_file.release();
+  VLOG(1) << "Loaded calibration from\n" << c_on_path << "\n" << c_off_path;
+
   // setup publishers
   image_transport::ImageTransport it_(nh_);
-  intensity_estimate_pub_ = it_.advertise("pure_event_reconstruction/intensity_estimate", INTENSITY_ESTIMATE_PUB_QUEUE_SIZE);
+  intensity_estimate_pub_ = it_.advertise(node_name + "/pure_event_reconstruction/intensity_estimate", INTENSITY_ESTIMATE_PUB_QUEUE_SIZE);
 
   // flags and counters
   initialised_ = false;
@@ -95,10 +107,10 @@ void High_pass_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
         const double ts = msg->events[i].ts.toSec();
         const bool polarity = msg->events[i].polarity;
 
-        if (adaptive_contrast_threshold_)
-        {
-          update_leaky_event_count(ts, x, y, polarity);
-        }
+       //  if (adaptive_contrast_threshold_)
+       //  {
+       //    update_leaky_event_count(ts, x, y, polarity);
+       //  }
 
 //        event_count_total_++;
 
@@ -115,12 +127,12 @@ void High_pass_filter::eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
 
     const double ts = msg->events.back().ts.toSec();
 
-    if (adaptive_contrast_threshold_ && (ts > t_next_recalibrate_contrast_thresholds_ ))
-    {
-      constexpr double contrast_threshold_recalibration_frequency = 20.0;  // Hz
-      recalibrate_contrast_thresholds(ts);
-      t_next_recalibrate_contrast_thresholds_ = ts + 1 / contrast_threshold_recalibration_frequency;
-    }
+   // if (adaptive_contrast_threshold_ && (ts > t_next_recalibrate_contrast_thresholds_ ))
+   // {
+   //   constexpr double contrast_threshold_recalibration_frequency = 20.0;  // Hz
+   //   recalibrate_contrast_thresholds(ts);
+   //   t_next_recalibrate_contrast_thresholds_ = ts + 1 / contrast_threshold_recalibration_frequency;
+   // }
 
     if (publish_framerate_ < 0)
     {
@@ -140,18 +152,13 @@ void High_pass_filter::initialise_image_states(const uint32_t& rows, const uint3
   ts_array_ = cv::Mat::zeros(rows, columns, CV_64FC1);
   ts_array_on_ = cv::Mat::zeros(rows, columns, CV_64FC1);
   ts_array_off_ = cv::Mat::zeros(rows, columns, CV_64FC1);
-
-  contrast_threshold_on_mat_ = cv::Mat::ones(rows, columns, CV_64FC1)*0.1;
-  contrast_threshold_off_mat_ = -cv::Mat::ones(rows, columns, CV_64FC1)*0.1;
-
+  // contrast_threshold_on_mat_ = cv::Mat::ones(rows, columns, CV_64FC1)*0.1;
+  // contrast_threshold_off_mat_ = -cv::Mat::ones(rows, columns, CV_64FC1)*0.1;
   t_next_publish_ = 0.0;
   t_next_recalibrate_contrast_thresholds_ = 0.0;
   t_next_log_intensity_update_ = 0.0;
-
   initialised_ = true;
-
   VLOG(2) << "Initialised!";
-
 }
 
 void High_pass_filter::reset()
@@ -168,14 +175,13 @@ void High_pass_filter::update_log_intensity_state(const double& ts,
     const int& x, const int& y, const bool& polarity)
 {
   const double delta_t = (ts - ts_array_.at<double>(y, x));
-  double contrast_threshold;
   if (delta_t < 0)
   {
     LOG(WARNING) << "Warning: non-monotonic timestamp detected, resetting...";
     reset();
     return;
   }
-
+  double contrast_threshold;
   if (adaptive_contrast_threshold_)
   {
     contrast_threshold = (polarity) ? contrast_threshold_on_mat_.at<double>(y, x) : contrast_threshold_off_mat_.at<double>(y, x);
