@@ -12,7 +12,7 @@ namespace pure_event_reconstruction
 High_pass_filter::High_pass_filter(ros::NodeHandle & nh, ros::NodeHandle nh_private)
 {
   constexpr int INTENSITY_ESTIMATE_PUB_QUEUE_SIZE = 1;
-  constexpr double EVENT_RETENTION_DURATION = 30;  // seconds. Used for calibrating contrast thresholds.
+  constexpr double EVENT_RETENTION_DURATION = 3000;  // seconds. Used for calibrating contrast thresholds.
 
   std::string working_dir;
   std::string save_dir;
@@ -141,6 +141,9 @@ void High_pass_filter::initialise_image_states(const uint32_t& rows, const uint3
   ts_array_on_ = cv::Mat::zeros(rows, columns, CV_64FC1);
   ts_array_off_ = cv::Mat::zeros(rows, columns, CV_64FC1);
 
+  contrast_threshold_on_mat_ = cv::Mat::ones(rows, columns, CV_64FC1)*0.1;
+  contrast_threshold_off_mat_ = -cv::Mat::ones(rows, columns, CV_64FC1)*0.1;
+
   t_next_publish_ = 0.0;
   t_next_recalibrate_contrast_thresholds_ = 0.0;
   t_next_log_intensity_update_ = 0.0;
@@ -151,6 +154,16 @@ void High_pass_filter::initialise_image_states(const uint32_t& rows, const uint3
 
 }
 
+void High_pass_filter::reset()
+{
+  log_intensity_state_.setTo(0);
+  ts_array_.setTo(0);
+  t_next_publish_ = 0.0;
+  t_next_recalibrate_contrast_thresholds_ = 0.0;
+  t_next_log_intensity_update_ = 0.0;
+  VLOG(2) << "Reset!";
+}
+
 void High_pass_filter::update_log_intensity_state(const double& ts,
     const int& x, const int& y, const bool& polarity)
 {
@@ -159,13 +172,13 @@ void High_pass_filter::update_log_intensity_state(const double& ts,
   if (delta_t < 0)
   {
     LOG(WARNING) << "Warning: non-monotonic timestamp detected, resetting...";
-    initialise_image_states(log_intensity_state_.rows, log_intensity_state_.cols);
+    reset();
     return;
   }
 
   if (adaptive_contrast_threshold_)
   {
-    contrast_threshold = (polarity) ? contrast_threshold_on_adaptive_ : contrast_threshold_off_adaptive_;
+    contrast_threshold = (polarity) ? contrast_threshold_on_mat_.at<double>(y, x) : contrast_threshold_off_mat_.at<double>(y, x);
   }
   else
   {
@@ -175,7 +188,6 @@ void High_pass_filter::update_log_intensity_state(const double& ts,
       -cutoff_frequency_global_ * delta_t - cutoff_frequency_per_event_component_) * log_intensity_state_.at<double>(y, x)
       + contrast_threshold;
   ts_array_.at<double>(y, x) = ts;
-
 }
 
 void High_pass_filter::update_log_intensity_state_global(const double& ts)
@@ -187,7 +199,7 @@ void High_pass_filter::update_log_intensity_state_global(const double& ts)
   if (min < 0)
   {
     LOG(WARNING) << "Warning: non-monotonic timestamp detected, resetting...";
-    initialise_image_states(log_intensity_state_.rows, log_intensity_state_.cols);
+    reset();
     return;
   }
 
@@ -227,7 +239,6 @@ void High_pass_filter::update_leaky_event_count(const double& ts, const int& x, 
 
 void High_pass_filter::recalibrate_contrast_thresholds(const double& ts)
 {
-  constexpr double EVENT_DENSITY_MIN = 5e6;
   //first do global update
   cv::Mat decay_factor_on;
   cv::Mat decay_factor_off;
@@ -240,17 +251,18 @@ void High_pass_filter::recalibrate_contrast_thresholds(const double& ts)
   ts_array_on_.setTo(ts);
   ts_array_off_.setTo(ts);
 
-  const double sum_on = cv::sum(leaky_event_count_on_)[0];
-  const double sum_off = cv::sum(leaky_event_count_off_)[0];
-  if (sum_on + sum_off > EVENT_DENSITY_MIN)
-  {
-  contrast_threshold_off_adaptive_ = -sum_on / (sum_off + 1e-10)
-                                     * contrast_threshold_on_adaptive_; // re-calibrate contrast thresholds
-  }
-  VLOG_IF_EVERY_N(3, adaptive_contrast_threshold_, 10) << "contrast threshold [ON, OFF] = ["
-      << contrast_threshold_off_adaptive_*10 << ",\t1]*" <<  contrast_threshold_on_adaptive_
-      << "\nEvent density: " << sum_on + sum_off;
+  const double mean_count = cv::mean(leaky_event_count_on_)[0] + cv::mean(leaky_event_count_off_)[0];
+  cv::divide(contrast_threshold_on_user_defined_*mean_count/2, leaky_event_count_on_ + 1e-6, contrast_threshold_on_mat_);
+  cv::divide(contrast_threshold_off_user_defined_*mean_count/2, leaky_event_count_off_ + 1e-6, contrast_threshold_off_mat_);
 
+  cv::Mat mask_on = contrast_threshold_on_mat_ > 1.5*contrast_threshold_on_user_defined_;
+  cv::Mat mask_off = contrast_threshold_off_mat_ < 1.5*contrast_threshold_off_user_defined_;
+  contrast_threshold_on_mat_.setTo(1.5*contrast_threshold_on_user_defined_, mask_on);
+  contrast_threshold_off_mat_.setTo(1.5*contrast_threshold_off_user_defined_, mask_off);
+
+  VLOG_IF_EVERY_N(3, adaptive_contrast_threshold_, 10) << "Mean contrast threshold [ON, OFF] = ["
+      << cv::mean(contrast_threshold_on_mat_)[0] << ",\t" << cv::mean(contrast_threshold_off_mat_)[0] << "]"
+      << "\nMean event count: " << mean_count;
 }
 
 void High_pass_filter::publish_intensity_estimate(const ros::Time& timestamp)

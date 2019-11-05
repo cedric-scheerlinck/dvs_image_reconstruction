@@ -47,6 +47,7 @@ private:
   void reconfigureCallback(pure_event_reconstruction::pure_event_reconstructionConfig &config, uint32_t level);
 
   void initialise_image_states(const uint32_t& rows, const uint32_t& columns);
+  void reset();
   void update_log_intensity_state(const double& ts, const int& x,
                                                             const int& y, const bool& polarity);
   void update_log_intensity_state_global(const double& ts);
@@ -74,6 +75,7 @@ private:
   cv::Mat ts_array_on_; // for leaky_event_count_on_
   cv::Mat ts_array_off_; // for leaky_event_count_off_
 
+
   bool initialised_;
   bool adaptive_contrast_threshold_;
   bool adaptive_dynamic_range_;
@@ -94,6 +96,10 @@ private:
   double contrast_threshold_off_user_defined_;
   double contrast_threshold_on_adaptive_; // held constant by convention
   double contrast_threshold_off_adaptive_;
+
+  // calibration
+  cv::Mat contrast_threshold_on_mat_;
+  cv::Mat contrast_threshold_off_mat_;
 
   // update-frequency parameters
   double publish_framerate_;
