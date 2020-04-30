@@ -496,9 +496,9 @@ void Complementary_filter::publish_intensity_estimate(const ros::Time& timestamp
     case BILATERAL: cv::bilateralFilter(display_image, filtered_display_image, 5, spatial_filter_sigma_, spatial_filter_sigma_);
                     break;
     case GUIDED: if (switch_guide_) {
-                     filtered_display_image = fastGuidedFilter(display_guide, display_image, 8, spatial_filter_sigma_, 2);
+                     filtered_display_image = fastGuidedFilter(display_guide, display_image, guide_eps_, spatial_filter_sigma_, guide_s_);
                  } else {
-                     filtered_display_image = fastGuidedFilter(display_image, display_guide, 8, spatial_filter_sigma_, 2);
+                     filtered_display_image = fastGuidedFilter(display_image, display_guide, guide_eps_, spatial_filter_sigma_, guide_s_);
                  }
                  break;
   }
@@ -598,13 +598,15 @@ void Complementary_filter::reconfigureCallback
                    break;
     case BILATERAL: spatial_filter_sigma_ = config.Spatial_filter_sigma*20;
                    break;
-    case GUIDED: spatial_filter_sigma_ = config.Spatial_filter_sigma*config.Spatial_filter_sigma*650.25;  // 0.1^2*255^2
+    case GUIDED: spatial_filter_sigma_ = config.Spatial_filter_sigma;
                  break;
   }
   color_image_ = config.Color_display;
   // guide
   guide_fade_ = config.Guide_fade*2*M_PI;
   switch_guide_ = config.Switch_guide;
+  guide_eps_ = config.Guide_eps*config.Guide_eps*65025; // (eps*255)^2
+  guide_s_ = config.Guide_s;
 }
 
 } // namespace

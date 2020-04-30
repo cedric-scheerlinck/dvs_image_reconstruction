@@ -81,6 +81,7 @@ private:
   std::string save_dir_;
 
   int spatial_smoothing_method_;
+  int guide_s_;
 
   double cutoff_frequency_user_defined_; /** rad/s */
   double contrast_threshold_on_user_defined_;
@@ -93,7 +94,9 @@ private:
   double intensity_min_;
   double intensity_max_;
   double spatial_filter_sigma_;
+  // guide
   double guide_fade_;
+  double guide_eps_;
 
 };
 

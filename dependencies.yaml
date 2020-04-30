@@ -15,3 +15,7 @@ repositories:
     type: git
     url: git@github.com:uzh-rpg/rpg_dvs_ros.git
     version: master
+  fast-guided-filter:
+    type: git
+    url: git@github.com:cedric-scheerlinck/fast-guided-filter.git
+    version: master
