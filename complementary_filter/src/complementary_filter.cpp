@@ -3,10 +3,11 @@
 #include <cv_bridge/cv_bridge.h>
 #include <glog/logging.h>
 #include <opencv2/opencv.hpp>
+#include <fastguidedfilter.h>
 
 #include "complementary_filter/utils.h"
 
-enum {GAUSSIAN, BILATERAL};
+enum {NONE, GAUSSIAN, BILATERAL, GUIDED};
 
 
 namespace complementary_filter
@@ -51,6 +52,8 @@ Complementary_filter::Complementary_filter(ros::NodeHandle & nh, ros::NodeHandle
   intensity_estimate_pub_ = it_.advertise("complementary_filter/intensity_estimate", IMAGE_PUB_QUEUE_SIZE);
   cutoff_frequency_array_pub_ = it_.advertise("complementary_filter/cutoff_frequency", IMAGE_PUB_QUEUE_SIZE);
   used_for_contrast_threshold_recalibration_pub_ = it_.advertise("complementary_filter/used_for_ct_calib", IMAGE_PUB_QUEUE_SIZE);
+  //guide
+  guide_pub_ = it_.advertise("complementary_filter/guide", IMAGE_PUB_QUEUE_SIZE);
 
   // bool
   initialised_ = false;
@@ -217,6 +220,8 @@ void Complementary_filter::initialise_image_states(const uint32_t& rows, const u
   contrast_threshold_on_array_ = cv::Mat::ones(rows, columns, CV_64FC1) * init_on;
   contrast_threshold_off_array_ = cv::Mat::ones(rows, columns, CV_64FC1) * init_off;
   cutoff_frequency_array_ = cv::Mat::ones(rows, columns, CV_64FC1) * cutoff_frequency_user_defined_;
+  // guide
+  guide_ = cv::Mat::zeros(rows, columns, CV_64FC1);
 
   contrast_threshold_on_adaptive_ = init_on;
   contrast_threshold_off_adaptive_ = init_off;
@@ -258,6 +263,9 @@ void Complementary_filter::update_log_intensity_state(const double& ts, const in
   log_intensity_state_.at<double>(y, x) = beta * log_intensity_state_.at<double>(y, x)
       + (1 - beta) * log_intensity_aps_frame_last_.at<double>(y, x) + contrast_threshold;
 
+  // guide
+  guide_.at<double>(y, x) = std::exp(-guide_fade_ * delta_t) * guide_.at<double>(y, x) + contrast_threshold;
+
   ts_array_.at<double>(y, x) = ts;
 }
 
@@ -285,6 +293,12 @@ void Complementary_filter::update_log_intensity_state_global(const double& ts)
   }
   log_intensity_state_ = log_intensity_state_.mul(beta)
       + log_intensity_aps_frame_last_.mul(1 - beta);
+
+  // guide
+  cv::Mat guide_beta;
+  cv::exp(-guide_fade_ * (delta_t), guide_beta);
+  guide_ = guide_.mul(guide_beta);
+
   ts_array_.setTo(ts);
 }
 
@@ -454,7 +468,12 @@ void Complementary_filter::publish_intensity_estimate(const ros::Time& timestamp
   cv::exp(log_intensity_state_, display_image); //[1, 2]
   display_image -= 1; // [0, 1]
   display_image -= intensity_min_;
-  display_image.convertTo(display_image, CV_8UC1, 255.0/display_range);
+  display_image.convertTo(display_image, CV_8UC1, 255.0/display_range); // [0, 255]
+
+  // guide
+  cv::Mat display_guide;
+  display_guide = guide_ + 0.5; // [0, 1]
+  display_guide.convertTo(display_guide, CV_8UC1, 255.0); // [0, 255]
 
   if (color_image_)
   {
@@ -468,24 +487,28 @@ void Complementary_filter::publish_intensity_estimate(const ros::Time& timestamp
     cv_image.encoding = "mono8";
   }
 
-  if (spatial_filter_sigma_ > 0)
-  {
-    cv::Mat filtered_display_image;
-    if (spatial_smoothing_method_ == GAUSSIAN)
-    {
-      cv::GaussianBlur(display_image, filtered_display_image, cv::Size(5, 5), spatial_filter_sigma_, spatial_filter_sigma_);
-    }
-    else if (spatial_smoothing_method_ == BILATERAL)
-    {
-      const double bilateral_sigma = spatial_filter_sigma_*20;
-      cv::bilateralFilter(display_image, filtered_display_image, 5, bilateral_sigma, bilateral_sigma);
-    }
-    display_image = filtered_display_image;
+  cv::Mat filtered_display_image;
+  switch (spatial_smoothing_method_) {
+    case NONE: filtered_display_image = display_image;
+               break;
+    case GAUSSIAN: cv::GaussianBlur(display_image, filtered_display_image, cv::Size(5, 5), spatial_filter_sigma_, spatial_filter_sigma_);
+                   break;
+    case BILATERAL: cv::bilateralFilter(display_image, filtered_display_image, 5, spatial_filter_sigma_, spatial_filter_sigma_);
+                    break;
+    case GUIDED: if (switch_guide_) {
+                     filtered_display_image = fastGuidedFilter(display_guide, display_image, 8, spatial_filter_sigma_, 2);
+                 } else {
+                     filtered_display_image = fastGuidedFilter(display_image, display_guide, 8, spatial_filter_sigma_, 2);
+                 }
+                 break;
   }
 
-  cv_image.image = display_image;
+  cv_image.image = filtered_display_image;
   cv_image.header.stamp = timestamp;
   intensity_estimate_pub_.publish(cv_image.toImageMsg());
+  //guide
+  cv_image.image = display_guide;
+  guide_pub_.publish(cv_image.toImageMsg());
 
   if (save_images_)
   {
@@ -568,9 +591,20 @@ void Complementary_filter::reconfigureCallback
   contrast_threshold_off_user_defined_ = config.Contrast_threshold_OFF;
   adaptive_contrast_threshold_ = config.Auto_detect_contrast_thresholds;
   adaptive_cutoff_frequency_ = config.High_dynamic_range_mode;
-  spatial_filter_sigma_ = config.Spatial_filter_sigma;
-  spatial_smoothing_method_ = int(config.Bilateral_filter);
+  spatial_smoothing_method_ = config.Spatial_filter;
+  switch (spatial_smoothing_method_) {
+    case NONE: break;
+    case GAUSSIAN: spatial_filter_sigma_ = config.Spatial_filter_sigma;
+                   break;
+    case BILATERAL: spatial_filter_sigma_ = config.Spatial_filter_sigma*20;
+                   break;
+    case GUIDED: spatial_filter_sigma_ = config.Spatial_filter_sigma*config.Spatial_filter_sigma*650.25;  // 0.1^2*255^2
+                 break;
+  }
   color_image_ = config.Color_display;
+  // guide
+  guide_fade_ = config.Guide_fade*2*M_PI;
+  switch_guide_ = config.Switch_guide;
 }
 
 } // namespace

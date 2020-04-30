@@ -49,6 +49,8 @@ private:
   image_transport::Publisher intensity_estimate_pub_;
   image_transport::Publisher cutoff_frequency_array_pub_;
   image_transport::Publisher used_for_contrast_threshold_recalibration_pub_;
+  // guide
+  image_transport::Publisher guide_pub_;
 
   std::vector<ros::Time> image_timestamps_; // only to be used in offline mode
   std::vector<cv::Mat> images_;
@@ -63,6 +65,8 @@ private:
   cv::Mat contrast_threshold_on_array_;
   cv::Mat contrast_threshold_off_array_;
   cv::Mat cutoff_frequency_array_;
+  // guide
+  cv::Mat guide_;
 
 
   bool initialised_;
@@ -71,6 +75,8 @@ private:
   bool save_images_;
   bool recalibrate_contrast_thresholds_initialised_;
   bool color_image_;
+  // guide
+  bool switch_guide_;
 
   std::string save_dir_;
 
@@ -87,6 +93,7 @@ private:
   double intensity_min_;
   double intensity_max_;
   double spatial_filter_sigma_;
+  double guide_fade_;
 
 };
 

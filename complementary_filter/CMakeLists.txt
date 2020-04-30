@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(complementary_filter)
 
 find_package(catkin_simple REQUIRED)
+find_package(fast-guided-filter REQUIRED)
 
 catkin_simple()
 

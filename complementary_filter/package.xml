@@ -19,4 +19,6 @@
   <depend>roscpp</depend>
   <depend>sensor_msgs</depend>
 
+  <depend>fast-guided-filter</depend>
+
 </package>
