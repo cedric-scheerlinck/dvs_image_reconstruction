@@ -141,12 +141,12 @@ void Complementary_filter::imageCallback(const sensor_msgs::Image::ConstPtr& msg
     return;
   }
 
-  cv_ptr->image.convertTo(last_image, CV_64FC1, 1 / 255.0, 1);
+  cv_ptr->image.convertTo(last_image, CV_64FC1, 1 / 255.0, 1);  // [1, 2]
 
   // put logarithm of APS frame into class member variable
   if (last_image.size() == log_intensity_aps_frame_last_.size())
   {
-    cv::log(last_image, log_intensity_aps_frame_last_);
+    cv::log(last_image, log_intensity_aps_frame_last_);  // [0, 0.69]
   }
 
   if (adaptive_contrast_threshold_)
@@ -212,7 +212,7 @@ void Complementary_filter::initialise_image_states(const uint32_t& rows, const u
   const double init_off = contrast_threshold_off_user_defined_;
   // double
   log_intensity_state_ = cv::Mat::zeros(rows, columns, CV_64FC1);
-  log_intensity_aps_frame_last_ = cv::Mat::zeros(rows, columns, CV_64FC1); // latest frame
+  log_intensity_aps_frame_last_ = cv::Mat::ones(rows, columns, CV_64FC1) * 0.405; // latest frame (log(1.5))
   log_intensity_aps_frame_previous_ = cv::Mat::zeros(rows, columns, CV_64FC1); // one before latest frame
   ts_array_ = cv::Mat::zeros(rows, columns, CV_64FC1); // similar to surface of active events
   event_count_on_array_ = cv::Mat::zeros(rows, columns, CV_64FC1);
